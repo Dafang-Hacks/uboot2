@@ -22,6 +22,9 @@ config SYS_BOARD
 config SYS_VENDOR
 	default "ingenic" if SOC_T20
 
+
+
+
 config SYS_CONFIG_NAME
 	default "isvp_t20"
 
@@ -30,6 +33,7 @@ choice
 
 config TARGET_T20
 	bool "T20"
+	select CREATE_ARCH_SYMLINK
 	depends on SOC_T20
 	help
 	  T20
