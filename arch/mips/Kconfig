@@ -84,6 +84,10 @@ config ARCH_BMIPS
 	select RAM
 	select SYSRESET
 
+
+config ARCH_XBURST
+    bool "Support XBurst"
+
 config MACH_PIC32
 	bool "Support Microchip PIC32"
 	select OF_CONTROL
@@ -132,9 +136,11 @@ source "board/imgtec/xilfpga/Kconfig"
 source "board/micronas/vct/Kconfig"
 source "board/pb1x00/Kconfig"
 source "board/qemu-mips/Kconfig"
+source "board/ingenic/isvp_t20/Kconfig"
 source "arch/mips/mach-ath79/Kconfig"
 source "arch/mips/mach-bmips/Kconfig"
 source "arch/mips/mach-pic32/Kconfig"
+
 
 if MIPS
 

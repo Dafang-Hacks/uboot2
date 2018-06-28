@@ -1,0 +1,36 @@
+menu "XBurst Platforms"
+	depends on ARCH_XBURST
+
+config SYS_SOC
+	default "pic32mzda" if SOC_T20
+
+choice
+	prompt "XBurst SoC select"
+
+config SOC_T20
+	bool "T20"
+	select SUPPORTS_LITTLE_ENDIAN
+	select SUPPORTS_CPU_MIPS32_R1
+	select SUPPORTS_CPU_MIPS32_R2
+	select MIPS_L1_CACHE_SHIFT_4
+	select SYS_MIPS_CACHE_INIT_RAM_LOAD
+	select ROM_EXCEPTION_VECTORS
+	help
+	  This supports T20 family of microcontrollers.
+
+endchoice
+
+choice
+	prompt "Board select"
+
+config TARGET_T20
+	bool "T20"
+	depends on SOC_T20
+	help
+	  T20
+
+endchoice
+
+
+
+endmenu
