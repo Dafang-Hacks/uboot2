@@ -2,7 +2,7 @@ menu "XBurst Platforms"
 	depends on ARCH_XBURST
 
 config SYS_SOC
-	default "pic32mzda" if SOC_T20
+	default "t20" if SOC_T20
 
 choice
 	prompt "XBurst SoC select"
@@ -19,6 +19,13 @@ config SOC_T20
 	  This supports T20 family of microcontrollers.
 
 endchoice
+
+config SYS_BOARD
+	default "isvp_t20" if SOC_T20
+
+config SYS_VENDOR
+	default "ingenic" if SOC_T20
+
 
 choice
 	prompt "Board select"
