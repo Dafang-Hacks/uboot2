@@ -73,6 +73,12 @@ void spl_ymodem_load_image(void);
 /* SPI SPL functions */
 void spl_spi_load_image(void);
 
+/* SFC NOR SPL functions */
+void spl_sfc_nor_load_image(void);
+
+/* SFC NAND SPL functions */
+void spl_sfc_nand_load_image(void);
+
 /* Ethernet SPL functions */
 void spl_net_load_image(const char *device);
 

@@ -66,6 +66,7 @@ LIBS-$(CONFIG_SPL_FRAMEWORK) += common/spl/libspl.o
 LIBS-$(CONFIG_SPL_LIBCOMMON_SUPPORT) += common/libcommon.o
 LIBS-$(CONFIG_SPL_LIBDISK_SUPPORT) += disk/libdisk.o
 LIBS-$(CONFIG_SPL_I2C_SUPPORT) += drivers/i2c/libi2c.o
+LIBS-$(CONFIG_SPL_REGULATOR_SUPPORT) += drivers/regulator/libregulator.o
 LIBS-$(CONFIG_SPL_GPIO_SUPPORT) += drivers/gpio/libgpio.o
 LIBS-$(CONFIG_SPL_MMC_SUPPORT) += drivers/mmc/libmmc.o
 LIBS-$(CONFIG_SPL_SERIAL_SUPPORT) += drivers/serial/libserial.o
@@ -75,6 +76,7 @@ LIBS-$(CONFIG_SPL_FAT_SUPPORT) += fs/fat/libfat.o
 LIBS-$(CONFIG_SPL_LIBGENERIC_SUPPORT) += lib/libgeneric.o
 LIBS-$(CONFIG_SPL_POWER_SUPPORT) += drivers/power/libpower.o
 LIBS-$(CONFIG_SPL_NAND_SUPPORT) += drivers/mtd/nand/libnand.o
+LIBS-$(CONFIG_JZ_NAND_MGR) += drivers/nand/libnand.o
 LIBS-$(CONFIG_SPL_ONENAND_SUPPORT) += drivers/mtd/onenand/libonenand.o
 LIBS-$(CONFIG_SPL_DMA_SUPPORT) += drivers/dma/libdma.o
 LIBS-$(CONFIG_SPL_POST_MEM_SUPPORT) += post/drivers/memory.o
@@ -105,6 +107,7 @@ endif
 ifeq ($(SOC),exynos)
 LIBS-y += $(CPUDIR)/s5p-common/libs5p-common.o
 endif
+
 
 # Add GCC lib
 ifeq ("$(USE_PRIVATE_LIBGCC)", "yes")
@@ -172,8 +175,20 @@ $(obj)$(BOARD)-spl.bin: $(obj)u-boot-spl.bin
 		$(obj)u-boot-spl.bin $(obj)$(BOARD)-spl.bin
 endif
 
+ifndef CONFIG_SPI_SPL_CHECK
+ifndef CONFIG_SPL_PARAMS_FIXER
 $(obj)u-boot-spl.bin:	$(obj)u-boot-spl
 	$(OBJCOPY) $(OBJCFLAGS) -O binary $< $@
+else
+$(obj)u-boot-spl.bin:	$(obj)u-boot-spl
+	$(OBJCOPY) $(OBJCFLAGS) -O binary $< $@
+	$(OBJTREE)/tools/ingenic-tools/spl_params_fixer $@ $@ 256 256 > /dev/null
+endif
+else
+$(obj)u-boot-spl.bin:	$(obj)u-boot-spl
+	$(OBJCOPY) $(OBJCFLAGS) -O binary $< $@
+	$(OBJTREE)/tools/ingenic-tools/spi_checksum $@
+endif
 
 GEN_UBOOT = \
 	cd $(obj) && $(LD) $(LDFLAGS) $(LDFLAGS_$(@F)) $(__START) \

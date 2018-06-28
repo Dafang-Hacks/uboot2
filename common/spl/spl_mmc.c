@@ -25,7 +25,6 @@
 #include <common.h>
 #include <spl.h>
 #include <asm/u-boot.h>
-#include <asm/utils.h>
 #include <mmc.h>
 #include <fat.h>
 #include <version.h>
@@ -37,6 +36,10 @@ static int mmc_load_image_raw(struct mmc *mmc, unsigned long sector)
 	unsigned long err;
 	u32 image_size_sectors;
 	struct image_header *header;
+
+#ifdef CONFIG_SUPPORT_EMMC_BOOT
+	mmc_boot_part_access(mmc, 0x1, 0x1, 0x1);
+#endif
 
 	header = (struct image_header *)(CONFIG_SYS_TEXT_BASE -
 						sizeof(struct image_header));
@@ -57,8 +60,14 @@ static int mmc_load_image_raw(struct mmc *mmc, unsigned long sector)
 					(void *)spl_image.load_addr);
 
 end:
+#ifdef CONFIG_SPL_LIBCOMMON_SUPPORT
 	if (err == 0)
 		printf("spl: mmc blk read err - %lu\n", err);
+#endif
+
+#ifdef CONFIG_SUPPORT_EMMC_BOOT
+	mmc_boot_part_access(mmc, 0x1, 0x1, 0x0);
+#endif
 
 	return (err == 0);
 }
@@ -70,7 +79,9 @@ static int mmc_load_image_raw_os(struct mmc *mmc)
 				       CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR,
 				       CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTORS,
 				       (void *)CONFIG_SYS_SPL_ARGS_ADDR)) {
+#ifdef CONFIG_SPL_LIBCOMMON_SUPPORT
 		printf("mmc args blk read error\n");
+#endif
 		return -1;
 	}
 
@@ -96,9 +107,11 @@ static int mmc_load_image_fat(struct mmc *mmc, const char *filename)
 	err = file_fat_read(filename, (u8 *)spl_image.load_addr, 0);
 
 end:
+#ifdef CONFIG_SPL_LIBCOMMON_SUPPORT
 	if (err <= 0)
 		printf("spl: error reading image %s, err - %d\n",
 		       filename, err);
+#endif
 
 	return (err <= 0);
 }
@@ -111,8 +124,10 @@ static int mmc_load_image_fat_os(struct mmc *mmc)
 	err = file_fat_read(CONFIG_SPL_FAT_LOAD_ARGS_NAME,
 			    (void *)CONFIG_SYS_SPL_ARGS_ADDR, 0);
 	if (err <= 0) {
+#ifdef CONFIG_SPL_LIBCOMMON_SUPPORT
 		printf("spl: error reading image %s, err - %d\n",
 		       CONFIG_SPL_FAT_LOAD_ARGS_NAME, err);
+#endif
 		return -1;
 	}
 
@@ -132,13 +147,17 @@ void spl_mmc_load_image(void)
 	/* We register only one device. So, the dev id is always 0 */
 	mmc = find_mmc_device(0);
 	if (!mmc) {
+#ifdef CONFIG_SPL_LIBCOMMON_SUPPORT
 		puts("spl: mmc device not found!!\n");
+#endif
 		hang();
 	}
 
 	err = mmc_init(mmc);
 	if (err) {
+#ifdef CONFIG_SPL_LIBCOMMON_SUPPORT
 		printf("spl: mmc init failed: err - %d\n", err);
+#endif
 		hang();
 	}
 
@@ -157,7 +176,9 @@ void spl_mmc_load_image(void)
 		err = fat_register_device(&mmc->block_dev,
 					  CONFIG_SYS_MMC_SD_FAT_BOOT_PARTITION);
 		if (err) {
+#ifdef CONFIG_SPL_LIBCOMMON_SUPPORT
 			printf("spl: fat register err - %d\n", err);
+#endif
 			hang();
 		}
 
@@ -167,7 +188,9 @@ void spl_mmc_load_image(void)
 		err = mmc_load_image_fat(mmc, CONFIG_SPL_FAT_LOAD_PAYLOAD_NAME);
 #endif
 	} else {
+#ifdef CONFIG_SPL_LIBCOMMON_SUPPORT
 		puts("spl: wrong MMC boot mode\n");
+#endif
 		hang();
 	}
 

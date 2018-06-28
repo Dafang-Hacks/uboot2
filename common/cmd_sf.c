@@ -27,6 +27,7 @@
 
 static struct spi_flash *flash;
 
+#define PRINT_TIME
 
 /*
  * This function computes the length argument for the erase command.
@@ -483,6 +484,11 @@ static int do_spi_flash(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[
 	--argc;
 	++argv;
 
+#ifdef PRINT_TIME
+	unsigned int start, end;
+	start = get_timer(0);
+#endif
+
 	if (strcmp(cmd, "probe") == 0) {
 		ret = do_spi_flash_probe(argc, argv);
 		goto done;
@@ -507,9 +513,13 @@ static int do_spi_flash(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[
 		ret = -1;
 
 done:
+#ifdef PRINT_TIME
+	end = get_timer(0);
+	printf("--->%s spend %d ms\n",cmd,end - start);
+#endif
+
 	if (ret != -1)
 		return ret;
-
 usage:
 	return CMD_RET_USAGE;
 }

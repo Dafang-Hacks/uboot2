@@ -216,7 +216,7 @@ main (int argc, char **argv)
 			case 'a':
 				if (--argc <= 0)
 					usage ();
-				params.addr = strtoul (*++argv, &ptr, 16);
+				params.addr = strtoull (*++argv, &ptr, 16);
 				if (*ptr) {
 					fprintf (stderr,
 						"%s: invalid load address %s\n",

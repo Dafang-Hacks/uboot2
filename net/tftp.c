@@ -21,7 +21,7 @@
 #define TIMEOUT		5000UL
 #ifndef	CONFIG_NET_RETRY_COUNT
 /* # of timeouts before giving up */
-# define TIMEOUT_COUNT	10
+# define TIMEOUT_COUNT	30
 #else
 # define TIMEOUT_COUNT  (CONFIG_NET_RETRY_COUNT * 2)
 #endif
