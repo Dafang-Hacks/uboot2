@@ -22,6 +22,8 @@ config SYS_BOARD
 config SYS_VENDOR
 	default "ingenic" if SOC_T20
 
+config SYS_CONFIG_NAME
+	default "isvp_t20"
 
 choice
 	prompt "Board select"
