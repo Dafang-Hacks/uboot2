@@ -7,6 +7,7 @@ config SYS_ARCH
 config SYS_CPU
 	default "mips32" if CPU_MIPS32
 	default "mips64" if CPU_MIPS64
+	default "xburst" if ARCH_XBURST
 
 choice
 	prompt "Target select"
