@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011 - 2012 Samsung Electronics
  * EXT4 filesystem implementation in Uboot by
@@ -10,23 +11,6 @@
  * Written by Stephen C. Tweedie <sct@redhat.com>
  *
  * Copyright 1998-2000 Red Hat, Inc --- All Rights Reserved
- * This file is part of the Linux kernel and is made available under
- * the terms of the GNU General Public License, version 2, or at your
- * option, any later version, incorporated herein by reference.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 #include <common.h>
@@ -167,7 +151,7 @@ int ext4fs_log_gdt(char *gd_table)
  * journal_buffer -- Buffer containing meta data
  * blknr -- Block number on disk of the meta data buffer
  */
-int ext4fs_log_journal(char *journal_buffer, long int blknr)
+int ext4fs_log_journal(char *journal_buffer, uint32_t blknr)
 {
 	struct ext_filesystem *fs = get_fs();
 	short i;
@@ -199,14 +183,18 @@ int ext4fs_log_journal(char *journal_buffer, long int blknr)
  * metadata_buffer -- Buffer containing meta data
  * blknr -- Block number on disk of the meta data buffer
  */
-int ext4fs_put_metadata(char *metadata_buffer, long int blknr)
+int ext4fs_put_metadata(char *metadata_buffer, uint32_t blknr)
 {
 	struct ext_filesystem *fs = get_fs();
 	if (!metadata_buffer) {
 		printf("Invalid input arguments %s\n", __func__);
 		return -EINVAL;
 	}
-	dirty_block_ptr[gd_index]->buf = zalloc(fs->blksz);
+	if (dirty_block_ptr[gd_index]->buf)
+		assert(dirty_block_ptr[gd_index]->blknr == blknr);
+	else
+		dirty_block_ptr[gd_index]->buf = zalloc(fs->blksz);
+
 	if (!dirty_block_ptr[gd_index]->buf)
 		return -ENOMEM;
 	memcpy(dirty_block_ptr[gd_index]->buf, metadata_buffer, fs->blksz);
@@ -231,7 +219,7 @@ void print_revoke_blks(char *revk_blk)
 	printf("total bytes %d\n", max);
 
 	while (offset < max) {
-		blocknr = be32_to_cpu(*((long int *)(revk_blk + offset)));
+		blocknr = be32_to_cpu(*((__be32 *)(revk_blk + offset)));
 		printf("revoke blknr is %ld\n", blocknr);
 		offset += 4;
 	}
@@ -318,7 +306,7 @@ int check_blknr_for_revoke(long int blknr, int sequence_no)
 			max = be32_to_cpu(header->r_count);
 
 			while (offset < max) {
-				blocknr = be32_to_cpu(*((long int *)
+				blocknr = be32_to_cpu(*((__be32 *)
 						  (revk_blk + offset)));
 				if (blocknr == blknr)
 					goto found;
@@ -367,7 +355,7 @@ void recover_transaction(int prev_desc_logical_no)
 	ofs = sizeof(struct journal_header_t);
 
 	do {
-		tag = (struct ext3_journal_block_tag *)&p_jdb[ofs];
+		tag = (struct ext3_journal_block_tag *)(p_jdb + ofs);
 		ofs += sizeof(struct ext3_journal_block_tag);
 
 		if (ofs > fs->blksz)
@@ -387,7 +375,7 @@ void recover_transaction(int prev_desc_logical_no)
 		blknr = read_allocated_block(&inode_journal, i);
 		ext4fs_devread((lbaint_t)blknr * fs->sect_perblk, 0,
 			       fs->blksz, metadata_buff);
-		put_ext4((uint64_t)(be32_to_cpu(tag->block) * fs->blksz),
+		put_ext4((uint64_t)((uint64_t)be32_to_cpu(tag->block) * (uint64_t)fs->blksz),
 			 metadata_buff, (uint32_t) fs->blksz);
 	} while (!(flags & EXT3_JOURNAL_FLAG_LAST_TAG));
 fail:
@@ -436,7 +424,7 @@ int ext4fs_check_journal_state(int recovery_flag)
 		       temp_buff);
 	jsb = (struct journal_superblock_t *) temp_buff;
 
-	if (fs->sb->feature_incompat & EXT3_FEATURE_INCOMPAT_RECOVER) {
+	if (le32_to_cpu(fs->sb->feature_incompat) & EXT3_FEATURE_INCOMPAT_RECOVER) {
 		if (recovery_flag == RECOVER)
 			printf("Recovery required\n");
 	} else {
@@ -478,7 +466,7 @@ int ext4fs_check_journal_state(int recovery_flag)
 			ofs = sizeof(struct journal_header_t);
 			do {
 				tag = (struct ext3_journal_block_tag *)
-				    &p_jdb[ofs];
+				    (p_jdb + ofs);
 				ofs += sizeof(struct ext3_journal_block_tag);
 				if (ofs > fs->blksz)
 					break;
@@ -533,11 +521,14 @@ int ext4fs_check_journal_state(int recovery_flag)
 
 end:
 	if (recovery_flag == RECOVER) {
+		uint32_t new_feature_incompat;
 		jsb->s_start = cpu_to_be32(1);
 		jsb->s_sequence = cpu_to_be32(be32_to_cpu(jsb->s_sequence) + 1);
 		/* get the superblock */
 		ext4_read_superblock((char *)fs->sb);
-		fs->sb->feature_incompat |= EXT3_FEATURE_INCOMPAT_RECOVER;
+		new_feature_incompat = le32_to_cpu(fs->sb->feature_incompat);
+		new_feature_incompat |= EXT3_FEATURE_INCOMPAT_RECOVER;
+		fs->sb->feature_incompat = cpu_to_le32(new_feature_incompat);
 
 		/* Update the super block */
 		put_ext4((uint64_t) (SUPERBLOCK_SIZE),
@@ -547,7 +538,7 @@ end:
 
 		blknr = read_allocated_block(&inode_journal,
 					 EXT2_JOURNAL_SUPERBLOCK);
-		put_ext4((uint64_t) (blknr * fs->blksz),
+		put_ext4((uint64_t) ((uint64_t)blknr * (uint64_t)fs->blksz),
 			 (struct journal_superblock_t *)temp_buff,
 			 (uint32_t) fs->blksz);
 		ext4fs_free_revoke_blks();
@@ -606,7 +597,7 @@ static void update_descriptor_block(long int blknr)
 	tag.flags = cpu_to_be32(EXT3_JOURNAL_FLAG_LAST_TAG);
 	memcpy(temp - sizeof(struct ext3_journal_block_tag), &tag,
 	       sizeof(struct ext3_journal_block_tag));
-	put_ext4((uint64_t) (blknr * fs->blksz), buf, (uint32_t) fs->blksz);
+	put_ext4((uint64_t) ((uint64_t)blknr * (uint64_t)fs->blksz), buf, (uint32_t) fs->blksz);
 
 	free(temp_buff);
 	free(buf);
@@ -641,7 +632,7 @@ static void update_commit_block(long int blknr)
 		return;
 	}
 	memcpy(buf, &jdb, sizeof(struct journal_header_t));
-	put_ext4((uint64_t) (blknr * fs->blksz), buf, (uint32_t) fs->blksz);
+	put_ext4((uint64_t) ((uint64_t)blknr * (uint64_t)fs->blksz), buf, (uint32_t) fs->blksz);
 
 	free(temp_buff);
 	free(buf);

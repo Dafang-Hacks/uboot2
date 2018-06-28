@@ -1,13 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2006-2009 Freescale Semiconductor, Inc.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
  */
 
 /*
@@ -21,8 +14,6 @@
 #include <i2c.h>
 #include <asm/fsl_i2c.h>
 #include "../common/pq-mds-pib.h"
-
-DECLARE_GLOBAL_DATA_PTR;
 
 static struct pci_region pci1_regions[] = {
 	{

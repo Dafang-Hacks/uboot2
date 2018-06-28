@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 Samsung Electronics
  * Lukasz Majewski <l.majewski@samsung.com>
@@ -6,38 +7,22 @@
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de
  *
  * (C) Copyright 2008-2009 Freescale Semiconductor, Inc.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
 #include <linux/types.h>
 #include <power/pmic.h>
 #include <i2c.h>
-#include <compiler.h>
+#include <linux/compiler.h>
 
 int pmic_reg_write(struct pmic *p, u32 reg, u32 val)
 {
 	unsigned char buf[4] = { 0 };
 
 	if (check_reg(p, reg))
-		return -1;
+		return -EINVAL;
+
+	I2C_SET_BUS(p->bus);
 
 	switch (pmic_i2c_tx_num) {
 	case 3:
@@ -65,25 +50,26 @@ int pmic_reg_write(struct pmic *p, u32 reg, u32 val)
 		break;
 	default:
 		printf("%s: invalid tx_num: %d", __func__, pmic_i2c_tx_num);
-		return -1;
+		return -EINVAL;
 	}
 
-	if (i2c_write(pmic_i2c_addr, reg, 1, buf, pmic_i2c_tx_num))
-		return -1;
-
-	return 0;
+	return i2c_write(pmic_i2c_addr, reg, 1, buf, pmic_i2c_tx_num);
 }
 
 int pmic_reg_read(struct pmic *p, u32 reg, u32 *val)
 {
 	unsigned char buf[4] = { 0 };
 	u32 ret_val = 0;
+	int ret;
 
 	if (check_reg(p, reg))
-		return -1;
+		return -EINVAL;
 
-	if (i2c_read(pmic_i2c_addr, reg, 1, buf, pmic_i2c_tx_num))
-		return -1;
+	I2C_SET_BUS(p->bus);
+
+	ret = i2c_read(pmic_i2c_addr, reg, 1, buf, pmic_i2c_tx_num);
+	if (ret)
+		return ret;
 
 	switch (pmic_i2c_tx_num) {
 	case 3:
@@ -105,7 +91,7 @@ int pmic_reg_read(struct pmic *p, u32 reg, u32 *val)
 		break;
 	default:
 		printf("%s: invalid tx_num: %d", __func__, pmic_i2c_tx_num);
-		return -1;
+		return -EINVAL;
 	}
 	memcpy(val, &ret_val, sizeof(ret_val));
 
@@ -114,11 +100,11 @@ int pmic_reg_read(struct pmic *p, u32 reg, u32 *val)
 
 int pmic_probe(struct pmic *p)
 {
-	I2C_SET_BUS(p->bus);
+	i2c_set_bus_num(p->bus);
 	debug("Bus: %d PMIC:%s probed!\n", p->bus, p->name);
 	if (i2c_probe(pmic_i2c_addr)) {
 		printf("Can't find PMIC:%s\n", p->name);
-		return -1;
+		return -ENODEV;
 	}
 
 	return 0;

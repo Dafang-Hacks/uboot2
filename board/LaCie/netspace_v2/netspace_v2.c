@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 Simon Guinot <sguinot@lacie.com>
  *
@@ -5,25 +6,14 @@
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
  */
 
 #include <common.h>
 #include <command.h>
+#include <environment.h>
+#include <asm/mach-types.h>
 #include <asm/arch/cpu.h>
-#include <asm/arch/kirkwood.h>
+#include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>
 #include <asm/arch/gpio.h>
 
@@ -35,8 +25,8 @@ DECLARE_GLOBAL_DATA_PTR;
 int board_early_init_f(void)
 {
 	/* Gpio configuration */
-	kw_config_gpio(NETSPACE_V2_OE_VAL_LOW, NETSPACE_V2_OE_VAL_HIGH,
-			NETSPACE_V2_OE_LOW, NETSPACE_V2_OE_HIGH);
+	mvebu_config_gpio(NETSPACE_V2_OE_VAL_LOW, NETSPACE_V2_OE_VAL_HIGH,
+			  NETSPACE_V2_OE_LOW, NETSPACE_V2_OE_HIGH);
 
 	/* Multi-Purpose Pins Functionality configuration */
 	static const u32 kwmpp_config[] = {
@@ -84,7 +74,7 @@ int board_init(void)
 	gd->bd->bi_arch_number = CONFIG_MACH_TYPE;
 
 	/* Boot parameters address */
-	gd->bd->bi_boot_params = kw_sdram_bar(0) + 0x100;
+	gd->bd->bi_boot_params = mvebu_sdram_bar(0) + 0x100;
 
 	return 0;
 }
@@ -93,10 +83,10 @@ int board_init(void)
 int misc_init_r(void)
 {
 #if defined(CONFIG_CMD_I2C) && defined(CONFIG_SYS_I2C_EEPROM_ADDR)
-	if (!getenv("ethaddr")) {
+	if (!env_get("ethaddr")) {
 		uchar mac[6];
 		if (lacie_read_mac_address(mac) == 0)
-			eth_setenv_enetaddr("ethaddr", mac);
+			eth_env_set_enetaddr("ethaddr", mac);
 	}
 #endif
 	return 0;

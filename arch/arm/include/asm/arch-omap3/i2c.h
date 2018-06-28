@@ -1,29 +1,11 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2004-2008
  * Texas Instruments, <www.ti.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 #ifndef _OMAP3_I2C_H_
 #define _OMAP3_I2C_H_
 
-#define I2C_BUS_MAX	3
 #define I2C_DEFAULT_BASE	I2C_BASE1
 
 struct i2c {
@@ -33,7 +15,7 @@ struct i2c {
 	unsigned short res2;
 	unsigned short stat;	/* 0x08 */
 	unsigned short res3;
-	unsigned short iv;	/* 0x0C */
+	unsigned short we;	/* 0x0C */
 	unsigned short res4;
 	unsigned short syss;	/* 0x10 */
 	unsigned short res4a;
@@ -59,6 +41,18 @@ struct i2c {
 	unsigned short res14;
 	unsigned short systest;	/* 0x3c */
 	unsigned short res15;
+	unsigned short bufstat;	/* 0x40 */
+	unsigned short res16;
+	unsigned short oa1;	/* 0x44 */
+	unsigned short res17;
+	unsigned short oa2;	/* 0x48 */
+	unsigned short res18;
+	unsigned short oa3;	/* 0x4c */
+	unsigned short res19;
+	unsigned short actoa;	/* 0x50 */
+	unsigned short res20;
+	unsigned short sblock;	/* 0x54 */
+	unsigned short res21;
 };
 
 #endif /* _OMAP3_I2C_H_ */

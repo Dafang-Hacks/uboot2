@@ -1,28 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2009-2011 Freescale Semiconductor, Inc.
- *	Andy Fleming <afleming@freescale.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ *	Andy Fleming <afleming@gmail.com>
  * Some part is taken from tsec.c
  */
 #include <common.h>
 #include <miiphy.h>
 #include <phy.h>
 #include <asm/io.h>
-#include <asm/fsl_tgec.h>
+#include <fsl_tgec.h>
 #include <fm_eth.h>
 
 /*
@@ -131,7 +117,7 @@ int fm_tgec_mdio_init(bd_t *bis, struct tgec_mdio_info *info)
 	bus->read = tgec_mdio_read;
 	bus->write = tgec_mdio_write;
 	bus->reset = tgec_mdio_reset;
-	sprintf(bus->name, info->name);
+	strcpy(bus->name, info->name);
 
 	bus->priv = info->regs;
 

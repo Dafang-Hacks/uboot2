@@ -1,30 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2007 Freescale Semiconductor, Inc.
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <asm/processor.h>
 
@@ -33,8 +16,8 @@ extern void ft_qe_setup(void *blob);
 DECLARE_GLOBAL_DATA_PTR;
 
 #if defined(CONFIG_BOOTCOUNT_LIMIT) && \
-	(defined(CONFIG_QE))
-#include <asm/immap_qe.h>
+	(defined(CONFIG_QE) && !defined(CONFIG_MPC831x))
+#include <linux/immap_qe.h>
 
 void fdt_fixup_muram (void *blob)
 {
@@ -69,7 +52,6 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 #if defined(CONFIG_HAS_ETH0) || defined(CONFIG_HAS_ETH1) ||\
     defined(CONFIG_HAS_ETH2) || defined(CONFIG_HAS_ETH3) ||\
     defined(CONFIG_HAS_ETH4) || defined(CONFIG_HAS_ETH5)
-	fdt_fixup_ethernet(blob);
 #ifdef CONFIG_MPC8313
 	/*
 	* mpc8313e erratum IPIC1 swapped TSEC interrupt ID numbers on rev. 1
@@ -140,7 +122,8 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 
 	fdt_fixup_memory(blob, (u64)bd->bi_memstart, (u64)bd->bi_memsize);
 
-#if defined(CONFIG_BOOTCOUNT_LIMIT)
+#if defined(CONFIG_BOOTCOUNT_LIMIT) && \
+	(defined(CONFIG_QE) && !defined(CONFIG_MPC831x))
 	fdt_fixup_muram (blob);
 #endif
 }

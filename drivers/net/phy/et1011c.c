@@ -1,19 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * ET1011C PHY driver
  *
  * Derived from Linux kernel driver by Chaithrika U S
  * Copyright (C) 2013, Texas Instruments, Incorporated - http://www.ti.com/
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
  */
 #include <config.h>
 #include <phy.h>
@@ -88,9 +78,13 @@ static int et1011c_parse_status(struct phy_device *phydev)
 
 static int et1011c_startup(struct phy_device *phydev)
 {
-	genphy_update_link(phydev);
-	et1011c_parse_status(phydev);
-	return 0;
+	int ret;
+
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
+	return et1011c_parse_status(phydev);
 }
 
 static struct phy_driver et1011c_driver = {

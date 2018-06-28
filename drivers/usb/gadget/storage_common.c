@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * storage_common.c -- Common definitions for mass storage functionality
  *
@@ -10,20 +11,6 @@
  *
  * Code refactoring & cleanup:
  * Łukasz Majewski <l.majewski@samsung.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 
@@ -279,15 +266,9 @@ struct interrupt_data {
 #define ASCQ(x)		((u8) (x))
 
 struct device_attribute { int i; };
-struct rw_semaphore { int i; };
-#define down_write(...)			do { } while (0)
-#define up_write(...)			do { } while (0)
-#define down_read(...)			do { } while (0)
-#define up_read(...)			do { } while (0)
 #define ETOOSMALL	525
 
 #include <usb_mass_storage.h>
-extern struct ums_board_info		*ums_info;
 
 /*-------------------------------------------------------------------------*/
 
@@ -327,7 +308,7 @@ static struct fsg_lun *fsg_lun_from_dev(struct device *dev)
 #define FSG_NUM_BUFFERS	2
 
 /* Default size of buffer length. */
-#define FSG_BUFLEN	((u32)16384)
+#define FSG_BUFLEN	((u32)131072)
 
 /* Maximal number of LUNs supported in mass storage function */
 #define FSG_MAX_LUNS	8
@@ -582,39 +563,20 @@ static struct usb_gadget_strings	fsg_stringtab = {
  * the caller must own fsg->filesem for writing.
  */
 
-static int fsg_lun_open(struct fsg_lun *curlun, const char *filename)
+static int fsg_lun_open(struct fsg_lun *curlun, unsigned int num_sectors,
+			const char *filename)
 {
 	int				ro;
-	int				rc = -EINVAL;
-	loff_t				size;
-	loff_t				num_sectors;
-	loff_t				min_sectors;
 
 	/* R/W if we can, R/O if we must */
 	ro = curlun->initially_ro;
 
-	ums_info->get_capacity(&(ums_info->ums_dev), &size);
-	if (size < 0) {
-		printf("unable to find file size: %s\n", filename);
-		rc = (int) size;
-		goto out;
-	}
-	num_sectors = size >> 9;	/* File size in 512-byte blocks */
-	min_sectors = 1;
-	if (num_sectors < min_sectors) {
-		printf("file too small: %s\n", filename);
-		rc = -ETOOSMALL;
-		goto out;
-	}
-
 	curlun->ro = ro;
-	curlun->file_length = size;
+	curlun->file_length = num_sectors << 9;
 	curlun->num_sectors = num_sectors;
 	debug("open backing file: %s\n", filename);
-	rc = 0;
 
-out:
-	return rc;
+	return 0;
 }
 
 static void fsg_lun_close(struct fsg_lun *curlun)

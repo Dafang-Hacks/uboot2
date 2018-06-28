@@ -1,53 +1,31 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2000-2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-#
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
-#
 
-include $(TOPDIR)/config.mk
-
-LIB	= $(obj)lib$(CPU).o
-
-START	= start.o
-COBJS	= cpu.o cache.o
+extra-y	= start.o
+obj-y	= cpu.o cache.o
 
 ifdef	CONFIG_SPL_BUILD
 ifdef	CONFIG_SPL_NO_CPU_SUPPORT_CODE
-START	:=
+extra-y	:=
 endif
 endif
 
-SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(COBJS) $(SOBJS))
-START	:= $(addprefix $(obj),$(START))
+obj-$(CONFIG_ARMADA100) += armada100/
+obj-$(if $(filter lpc32xx,$(SOC)),y) += lpc32xx/
+obj-$(CONFIG_MX25) += mx25/
+obj-$(CONFIG_MX27) += mx27/
+obj-$(if $(filter mxs,$(SOC)),y) += mxs/
+obj-$(if $(filter spear,$(SOC)),y) += spear/
 
-all:	$(obj).depend $(START) $(LIB)
+# some files can only build in ARM or THUMB2, not THUMB1
 
-$(LIB):	$(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
+ifdef CONFIG_$(SPL_)SYS_THUMB_BUILD
+ifndef CONFIG_HAS_THUMB2
 
-#########################################################################
+CFLAGS_cpu.o := -marm
+CFLAGS_cache.o := -marm
 
-# defines $(obj).depend target
-include $(SRCTREE)/rules.mk
-
-sinclude $(obj).depend
-
-#########################################################################
+endif
+endif

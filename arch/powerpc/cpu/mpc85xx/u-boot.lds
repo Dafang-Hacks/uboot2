@@ -1,26 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright 2007-2009, 2011 Freescale Semiconductor, Inc.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
-#include "config.h"	/* CONFIG_BOARDDIR */
+#include "config.h"
 
 #ifdef CONFIG_RESET_VECTOR_ADDRESS
 #define RESET_VECTOR_ADDRESS	CONFIG_RESET_VECTOR_ADDRESS
@@ -28,7 +11,12 @@
 #define RESET_VECTOR_ADDRESS	0xfffffffc
 #endif
 
+#ifndef CONFIG_SYS_MONITOR_LEN
+#define CONFIG_SYS_MONITOR_LEN	0x80000
+#endif
+
 OUTPUT_ARCH(powerpc)
+ENTRY(_start_e500)
 
 PHDRS
 {
@@ -61,7 +49,6 @@ SECTIONS
     _GOT2_TABLE_ = .;
     KEEP(*(.got2))
     KEEP(*(.got))
-    PROVIDE(_GLOBAL_OFFSET_TABLE_ = . + 4);
     _FIXUP_TABLE_ = .;
     KEEP(*(.fixup))
   }
@@ -100,7 +87,7 @@ SECTIONS
   {
     KEEP(arch/powerpc/cpu/mpc85xx/start.o (.bootpg))
   } :text = 0xffff
-  . = ADDR(.text) + 0x80000;
+  . = ADDR(.text) + CONFIG_SYS_MONITOR_LEN;
 #else
   .bootpg RESET_VECTOR_ADDRESS - 0xffc :
   {

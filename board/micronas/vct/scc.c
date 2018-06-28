@@ -1,26 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009 Stefan Roese <sr@denx.de>, DENX Software Engineering
  *
  * Copyright (C) 2006 Micronas GmbH
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 
 #include "vct.h"
 
@@ -537,11 +523,13 @@ int scc_setup_dma(enum scc_id id, u32 buffer_tag,
 	struct scc_dma_state *dma_state;
 	int return_value = 0;
 	union scc_dma_cfg dma_cfg;
-	u32 *buffer_tag_list = scc_descriptor_table[id].buffer_tag_list;
+	u32 *buffer_tag_list;
 	u32 tag_count, t, t_valid;
 
 	if ((id >= SCC_MAX) || (id < 0))
 		return -EINVAL;
+
+	buffer_tag_list = scc_descriptor_table[id].buffer_tag_list;
 
 	/* if the register is only configured by hw, cannot write! */
 	if (1 == scc_descriptor_table[id].hw_dma_cfg)

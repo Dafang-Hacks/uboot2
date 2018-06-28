@@ -1,27 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000, 2001
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
+#include <asm/io.h>
 
 /* ------------------------------------------------------------------------- */
 
@@ -76,25 +60,14 @@ unsigned long ticks2usec(unsigned long ticks)
 #endif
 /* ------------------------------------------------------------------------- */
 
-int init_timebase (void)
+int timer_init(void)
 {
 	unsigned long temp;
 
-#if defined(CONFIG_5xx) || defined(CONFIG_8xx)
-	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
-
-	/* unlock */
-	immap->im_sitk.sitk_tbk = KAPWR_KEY;
-#endif
-
 	/* reset */
-	asm volatile("li %0,0 ; mttbu %0 ; mttbl %0;"
+	asm volatile("li %0,0 ; mttbl %0 ; mttbu %0;"
 	     : "=&r"(temp) );
 
-#if defined(CONFIG_5xx) || defined(CONFIG_8xx)
-	/* enable */
-	immap->im_sit.sit_tbscr |= TBSCR_TBE;
-#endif
 	return (0);
 }
 /* ------------------------------------------------------------------------- */

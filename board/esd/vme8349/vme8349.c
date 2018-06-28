@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * vme8349.c -- esd VME8349 board support
  *
@@ -8,25 +9,6 @@
  *
  * Reinhard Arlt <reinhard.arlt@esd-electronics.com>
  * Based on board/mpc8349emds/mpc8349emds.c (and previous 834x releases.)
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- *
  */
 
 #include <common.h>
@@ -34,7 +16,7 @@
 #include <mpc83xx.h>
 #include <asm/mpc8349_pci.h>
 #if defined(CONFIG_OF_LIBFDT)
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #endif
 #include <asm/io.h>
 #include <asm/mmu.h>
@@ -43,15 +25,17 @@
 #include <i2c.h>
 #include <netdev.h>
 
+DECLARE_GLOBAL_DATA_PTR;
+
 void ddr_enable_ecc(unsigned int dram_size);
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	volatile immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	u32 msize = 0;
 
 	if ((im->sysconf.immrbar & IMMRBAR_BASE_ADDR) != (u32)im)
-		return -1;
+		return -ENXIO;
 
 	/* DDR SDRAM - Main memory */
 	im->sysconf.ddrlaw[0].bar = CONFIG_SYS_DDR_BASE & LAWBAR_BAR;
@@ -69,7 +53,9 @@ phys_size_t initdram(int board_type)
 	msize = get_ram_size(0, msize);
 
 	/* return total bus SDRAM size(bytes)  -- DDR */
-	return msize * 1024 * 1024;
+	gd->ram_size = msize * 1024 * 1024;
+
+	return 0;
 }
 
 int checkboard(void)
@@ -91,13 +77,15 @@ int board_eth_init(bd_t *bis)
 #endif
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
+
+	return 0;
 }
 #endif
 
@@ -186,11 +174,11 @@ static spd_eeprom_t default_spd_eeprom = {
 
 int vme8349_read_spd(uchar chip, uint addr, int alen, uchar *buffer, int len)
 {
-	int old_bus = I2C_GET_BUS();
+	int old_bus = i2c_get_bus_num();
 	unsigned int l, sum;
 	int valid = 0;
 
-	I2C_SET_BUS(0);
+	i2c_set_bus_num(0);
 
 	if (i2c_read(chip, addr, alen, buffer, len) == 0)
 		if (memcmp(&buffer[64], &default_spd_eeprom.mid[0], 8) == 0) {
@@ -215,7 +203,7 @@ int vme8349_read_spd(uchar chip, uint addr, int alen, uchar *buffer, int len)
 		buffer[63] = sum;
 	}
 
-	I2C_SET_BUS(old_bus);
+	i2c_set_bus_num(old_bus);
 
 	return 0;
 }

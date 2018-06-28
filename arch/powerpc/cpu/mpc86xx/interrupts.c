@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -11,24 +12,6 @@
  * (C) Copyright 2004, 2007 Freescale Semiconductor. (MPC86xx Port)
  * Jeff Brown
  * Srikanth Srinivasan (srikanth.srinivasan@freescale.com)
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -39,7 +22,7 @@
 #include <post.h>
 #endif
 
-int interrupt_init_cpu(unsigned long *decrementer_count)
+void interrupt_init_cpu(unsigned *decrementer_count)
 {
 	volatile immap_t *immr = (immap_t *)CONFIG_SYS_IMMR;
 	volatile ccsr_pic_t *pic = &immr->im_pic;
@@ -59,7 +42,7 @@ int interrupt_init_cpu(unsigned long *decrementer_count)
 	pic->gcr = MPC86xx_PICGCR_MODE;
 
 	*decrementer_count = get_tbclk() / CONFIG_SYS_HZ;
-	debug("interrupt init: tbclk() = %ld MHz, decrementer_count = %ld\n",
+	debug("interrupt init: tbclk() = %ld MHz, decrementer_count = %d\n",
 	      (get_tbclk() / 1000000),
 	      *decrementer_count);
 
@@ -89,8 +72,6 @@ int interrupt_init_cpu(unsigned long *decrementer_count)
 #ifdef CONFIG_POST
 	post_word_store(post_word);
 #endif
-
-	return 0;
 }
 
 /*

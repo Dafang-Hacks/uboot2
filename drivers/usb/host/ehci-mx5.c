@@ -1,23 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2009 Daniel Mack <daniel@caiaq.de>
  * Copyright (C) 2010 Freescale Semiconductor, Inc.
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details.
  */
 
 #include <common.h>
 #include <usb.h>
 #include <errno.h>
 #include <linux/compiler.h>
-#include <usb/ehci-fsl.h>
+#include <usb/ehci-ci.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
@@ -226,24 +217,28 @@ void __weak board_ehci_hcd_postinit(struct usb_ehci *ehci, int port)
 {
 }
 
-int ehci_hcd_init(int index, struct ehci_hccr **hccr, struct ehci_hcor **hcor)
+__weak void mx5_ehci_powerup_fixup(struct ehci_ctrl *ctrl, uint32_t *status_reg,
+				   uint32_t *reg)
+{
+	mdelay(50);
+}
+
+static const struct ehci_ops mx5_ehci_ops = {
+	.powerup_fixup		= mx5_ehci_powerup_fixup,
+};
+
+int ehci_hcd_init(int index, enum usb_init_type init,
+		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 {
 	struct usb_ehci *ehci;
-#ifdef CONFIG_MX53
-	struct clkctl *sc_regs = (struct clkctl *)CCM_BASE_ADDR;
-	u32 reg;
 
-	reg = __raw_readl(&sc_regs->cscmr1) & ~(1 << 26);
-	/* derive USB PHY clock multiplexer from PLL3 */
-	reg |= 1 << 26;
-	__raw_writel(reg, &sc_regs->cscmr1);
-#endif
-
+	/* The only user for this is efikamx-usb */
+	ehci_set_controller_priv(index, NULL, &mx5_ehci_ops);
 	set_usboh3_clk();
-	enable_usboh3_clk(1);
+	enable_usboh3_clk(true);
 	set_usb_phy_clk();
-	enable_usb_phy1_clk(1);
-	enable_usb_phy2_clk(1);
+	enable_usb_phy1_clk(true);
+	enable_usb_phy2_clk(true);
 	mdelay(1);
 
 	/* Do board specific initialization */

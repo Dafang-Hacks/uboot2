@@ -1,24 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 /* #define DEBUG */
@@ -26,7 +9,6 @@
 #include <common.h>
 #include <flash.h>
 
-#if !defined(CONFIG_SYS_NO_FLASH)
 #include <mtd/cfi_flash.h>
 
 extern flash_info_t  flash_info[]; /* info for FLASH chips */
@@ -104,7 +86,6 @@ flash_protect (int flag, ulong from, ulong to, flash_info_t *info)
 flash_info_t *
 addr2info (ulong addr)
 {
-#ifndef CONFIG_SPD823TS
 	flash_info_t *info;
 	int i;
 
@@ -120,7 +101,6 @@ addr2info (ulong addr)
 			return (info);
 		}
 	}
-#endif /* CONFIG_SPD823TS */
 
 	return (NULL);
 }
@@ -131,7 +111,7 @@ addr2info (ulong addr)
  * and no protected sectors are hit.
  * Returns:
  * ERR_OK          0 - OK
- * ERR_TIMOUT      1 - write timeout
+ * ERR_TIMEOUT     1 - write timeout
  * ERR_NOT_ERASED  2 - Flash not erased
  * ERR_PROTECTED   4 - target range includes protected sectors
  * ERR_INVAL       8 - target address not in Flash memory
@@ -141,9 +121,6 @@ addr2info (ulong addr)
 int
 flash_write (char *src, ulong addr, ulong cnt)
 {
-#ifdef CONFIG_SPD823TS
-	return (ERR_TIMOUT);	/* any other error codes are possible as well */
-#else
 	int i;
 	ulong         end        = addr + cnt - 1;
 	flash_info_t *info_first = addr2info (addr);
@@ -197,7 +174,6 @@ flash_write (char *src, ulong addr, ulong cnt)
 #endif /* CONFIG_SYS_FLASH_VERIFY_AFTER_WRITE */
 
 	return (ERR_OK);
-#endif /* CONFIG_SPD823TS */
 }
 
 /*-----------------------------------------------------------------------
@@ -208,7 +184,7 @@ void flash_perror (int err)
 	switch (err) {
 	case ERR_OK:
 		break;
-	case ERR_TIMOUT:
+	case ERR_TIMEOUT:
 		puts ("Timeout writing to Flash\n");
 		break;
 	case ERR_NOT_ERASED:
@@ -240,7 +216,3 @@ void flash_perror (int err)
 		break;
 	}
 }
-
-/*-----------------------------------------------------------------------
- */
-#endif /* !CONFIG_SYS_NO_FLASH */

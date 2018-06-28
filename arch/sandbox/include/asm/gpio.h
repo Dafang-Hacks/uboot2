@@ -1,25 +1,9 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * This is the interface to the sandbox GPIO driver for test code which
  * wants to change the GPIO values reported to U-Boot.
  *
  * Copyright (c) 2011 The Chromium OS Authors.
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #ifndef __ASM_SANDBOX_GPIO_H
@@ -42,40 +26,60 @@
 /**
  * Return the simulated value of a GPIO (used only in sandbox test code)
  *
- * @param gp	GPIO number
+ * @param dev		device to use
+ * @param offset	GPIO offset within bank
  * @return -1 on error, 0 if GPIO is low, >0 if high
  */
-int sandbox_gpio_get_value(unsigned gp);
+int sandbox_gpio_get_value(struct udevice *dev, unsigned int offset);
 
 /**
  * Set the simulated value of a GPIO (used only in sandbox test code)
  *
- * @param gp	GPIO number
- * @param value	value to set (0 for low, non-zero for high)
+ * @param dev		device to use
+ * @param offset	GPIO offset within bank
+ * @param value		value to set (0 for low, non-zero for high)
  * @return -1 on error, 0 if ok
  */
-int sandbox_gpio_set_value(unsigned gp, int value);
+int sandbox_gpio_set_value(struct udevice *dev, unsigned int offset, int value);
 
 /**
- * Return the simulated direction of a GPIO (used only in sandbox test code)
+ * Set or reset the simulated open drain mode of a GPIO (used only in sandbox
+ * test code)
+ *
+ * @param gp	GPIO number
+ * @param value	value to set (0 for enabled open drain mode, non-zero for
+ * 		disabled)
+ * @return -1 on error, 0 if ok
+ */
+int sandbox_gpio_set_open_drain(struct udevice *dev, unsigned offset, int value);
+
+/**
+ * Return the state of the simulated open drain mode of a GPIO (used only in
+ * sandbox test code)
  *
  * @param gp	GPIO number
  * @return -1 on error, 0 if GPIO is input, >0 if output
  */
-int sandbox_gpio_get_direction(unsigned gp);
+int sandbox_gpio_get_open_drain(struct udevice *dev, unsigned offset);
+
+/**
+ * Return the simulated direction of a GPIO (used only in sandbox test code)
+ *
+ * @param dev		device to use
+ * @param offset	GPIO offset within bank
+ * @return -1 on error, 0 if GPIO is input, >0 if output
+ */
+int sandbox_gpio_get_direction(struct udevice *dev, unsigned int offset);
 
 /**
  * Set the simulated direction of a GPIO (used only in sandbox test code)
  *
- * @param gp	GPIO number
- * @param output 0 to set as input, 1 to set as output
+ * @param dev		device to use
+ * @param offset	GPIO offset within bank
+ * @param output 	0 to set as input, 1 to set as output
  * @return -1 on error, 0 if ok
  */
-int sandbox_gpio_set_direction(unsigned gp, int output);
-
-/* Display information about each GPIO */
-void gpio_info(void);
-
-#define gpio_status()	gpio_info()
+int sandbox_gpio_set_direction(struct udevice *dev, unsigned int offset,
+			       int output);
 
 #endif

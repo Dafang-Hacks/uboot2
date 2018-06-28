@@ -1,24 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *  Copyright (C) 2012 Samsung Electronics
  *  Lukasz Majewski <l.majewski@samsung.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -49,21 +32,21 @@ static int pmic_charger_state(struct pmic *p, int state, int current)
 	u32 val = 0;
 
 	if (pmic_probe(p))
-		return -1;
+		return -ENODEV;
 
-	if (state == CHARGER_DISABLE) {
+	if (state == PMIC_CHARGER_DISABLE) {
 		puts("Disable the charger.\n");
 		pmic_reg_read(p, MAX8997_REG_MBCCTRL2, &val);
 		val &= ~(MBCHOSTEN | VCHGR_FC);
 		pmic_reg_write(p, MAX8997_REG_MBCCTRL2, val);
 
-		return -1;
+		return -ENOTSUPP;
 	}
 
 	if (current < CHARGER_MIN_CURRENT || current > CHARGER_MAX_CURRENT) {
 		printf("%s: Wrong charge current: %d [mA]\n",
 		       __func__, current);
-		return -1;
+		return -EINVAL;
 	}
 
 	fc = (current - CHARGER_MIN_CURRENT) / CHARGER_CURRENT_RESOLUTION;
@@ -87,7 +70,7 @@ static int pmic_charger_bat_present(struct pmic *p)
 	u32 val;
 
 	if (pmic_probe(p))
-		return -1;
+		return -ENODEV;
 
 	pmic_reg_read(p, MAX8997_REG_STATUS4, &val);
 

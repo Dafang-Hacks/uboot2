@@ -1,31 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011
  * eInfochips Ltd. <www.einfochips.com>
- * Written-by: Ajay Bhargav <ajay.bhargav@einfochips.com>
+ * Written-by: Ajay Bhargav <contact@8051projects.net>
  *
  * Based on Aspenite:
  * (C) Copyright 2010
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
  * Contributor: Mahavir Jain <mjain@marvell.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301 USA
  */
 
 #include <common.h>
@@ -35,6 +18,7 @@
 #include <asm/arch/armada100.h>
 #include <asm/gpio.h>
 #include <miiphy.h>
+#include <asm/mach-types.h>
 
 #ifdef CONFIG_ARMADA100_FEC
 #include <net.h>
@@ -92,7 +76,7 @@ int board_init(void)
 		(struct armd1apb2_registers *)ARMD1_APBC2_BASE;
 
 	/* arch number of Board */
-	gd->bd->bi_arch_number = MACH_TYPE_SHEEVAD;
+	gd->bd->bi_arch_number = MACH_TYPE_GPLUGD;
 	/* adress of boot parameters */
 	gd->bd->bi_boot_params = armd1_sdram_base(0) + 0x100;
 	/* Assert PHY_RST# */

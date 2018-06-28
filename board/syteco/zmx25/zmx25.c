@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (c) 2011 Graf-Syteco, Matthias Weisser
  * <weisserm@arcor.de>
@@ -11,22 +12,6 @@
  *   Copyright (C) 2009 Ilya Yanok <yanok@emcraft.com>
  * And:
  *   RedBoot tx25_misc.c Copyright (C) 2009 Red Hat
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- *
  */
 #include <common.h>
 #include <asm/gpio.h>
@@ -160,7 +145,7 @@ int board_late_init(void)
 	udelay(5000);
 #endif
 
-	e = getenv("gs_base_board");
+	e = env_get("gs_base_board");
 	if (e != NULL) {
 		if (strcmp(e, "G283") == 0) {
 			int key = gpio_get_value(IMX_GPIO_NR(2, 29));
@@ -170,9 +155,9 @@ int board_late_init(void)
 				gpio_set_value(IMX_GPIO_NR(1, 29), 0);
 				gpio_set_value(IMX_GPIO_NR(4, 21), 0);
 
-				setenv("preboot", "run gs_slow_boot");
+				env_set("preboot", "run gs_slow_boot");
 			} else
-				setenv("preboot", "run gs_fast_boot");
+				env_set("preboot", "run gs_fast_boot");
 		}
 	}
 

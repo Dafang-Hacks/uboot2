@@ -1,32 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2007 Freescale Semiconductor, Inc.
  *
  * Author: Scott Wood <scottwood@freescale.com>
  *         Dave Liu <daveliu@freescale.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS for A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
 #include <hwconfig.h>
 #include <i2c.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <pci.h>
 #include <mpc83xx.h>
@@ -204,14 +187,16 @@ void fdt_tsec1_fixup(void *fdt, bd_t *bd)
 	do_fixup_by_path(fdt, path, "status", disabled, sizeof(disabled), 1);
 }
 
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
-	fdt_fixup_dr_usb(blob, bd);
+	fsl_fdt_fixup_dr_usb(blob, bd);
 	fdt_tsec1_fixup(blob, bd);
+
+	return 0;
 }
 #endif
 
@@ -235,8 +220,8 @@ void board_init_f(ulong bootflag)
 	NS16550_init((NS16550_t)(CONFIG_SYS_IMMR + 0x4500),
 		     CONFIG_SYS_NS16550_CLK / 16 / CONFIG_BAUDRATE);
 	puts("NAND boot... ");
-	init_timebase();
-	initdram(0);
+	timer_init();
+	dram_init();
 	relocate_code(CONFIG_SYS_NAND_U_BOOT_RELOC + 0x10000, (gd_t *)gd,
 		      CONFIG_SYS_NAND_U_BOOT_RELOC);
 }

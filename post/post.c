@@ -1,24 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -29,10 +12,6 @@
 
 #ifdef CONFIG_SYS_POST_HOTKEYS_GPIO
 #include <asm/gpio.h>
-#endif
-
-#ifdef CONFIG_LOGBUFFER
-#include <logbuff.h>
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -68,7 +47,7 @@ int post_init_f(void)
  * Boards with hotkey support can override this weak default function
  * by defining one in their board specific code.
  */
-int __post_hotkeys_pressed(void)
+__weak int post_hotkeys_pressed(void)
 {
 #ifdef CONFIG_SYS_POST_HOTKEYS_GPIO
 	int ret;
@@ -89,9 +68,6 @@ int __post_hotkeys_pressed(void)
 
 	return 0;	/* No hotkeys supported */
 }
-int post_hotkeys_pressed(void)
-	__attribute__((weak, alias("__post_hotkeys_pressed")));
-
 
 void post_bootmode_init(void)
 {
@@ -199,7 +175,7 @@ static void post_get_env_flags(int *test_flags)
 	int i, j;
 
 	for (i = 0; i < varnum; i++) {
-		if (getenv_f(var[i], list, sizeof(list)) <= 0)
+		if (env_get_f(var[i], list, sizeof(list)) <= 0)
 			continue;
 
 		for (j = 0; j < post_list_size; j++)
@@ -252,11 +228,9 @@ static void post_get_flags(int *test_flags)
 			test_flags[j] |= POST_SLOWTEST;
 }
 
-void __show_post_progress(unsigned int test_num, int before, int result)
+__weak void show_post_progress(unsigned int test_num, int before, int result)
 {
 }
-void show_post_progress(unsigned int, int, int)
-			__attribute__((weak, alias("__show_post_progress")));
 
 static int post_run_single(struct post_test *test,
 				int test_flags, int flags, unsigned int i)
@@ -428,13 +402,8 @@ int post_log(char *format, ...)
 	vsprintf(printbuffer, format, args);
 	va_end(args);
 
-#ifdef CONFIG_LOGBUFFER
-	/* Send to the logbuffer */
-	logbuff_log(printbuffer);
-#else
 	/* Send to the stdout file */
 	puts(printbuffer);
-#endif
 
 	return 0;
 }
@@ -495,7 +464,7 @@ void post_reloc(void)
  */
 unsigned long post_time_ms(unsigned long base)
 {
-#if defined(CONFIG_PPC) || defined(CONFIG_BLACKFIN) || defined(CONFIG_ARM)
+#if defined(CONFIG_PPC) || defined(CONFIG_ARM)
 	return (unsigned long)lldiv(get_ticks(), get_tbclk() / CONFIG_SYS_HZ)
 		- base;
 #else

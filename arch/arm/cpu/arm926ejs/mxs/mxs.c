@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Freescale i.MX23/i.MX28 common code
  *
@@ -6,31 +7,13 @@
  *
  * Based on code from LTIB:
  * Copyright (C) 2010 Freescale Semiconductor, Inc.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
-#include <asm/imx-common/dma.h>
+#include <asm/mach-imx/dma.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/iomux.h>
 #include <asm/arch/imx-regs.h>
@@ -40,7 +23,7 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 /* Lowlevel init isn't used on i.MX28, so just have a dummy here */
-inline void lowlevel_init(void) {}
+__weak void lowlevel_init(void) {}
 
 void reset_cpu(ulong ignored) __attribute__((noreturn));
 
@@ -99,7 +82,9 @@ void mx28_fixup_vt(uint32_t start_addr)
 	int i;
 
 	for (i = 0; i < 8; i++) {
+		/* cppcheck-suppress nullPointer */
 		vt[i] = ldr_pc;
+		/* cppcheck-suppress nullPointer */
 		vt[i + 8] = start_addr + (4 * i);
 	}
 }
@@ -146,23 +131,7 @@ int arch_cpu_init(void)
 	return 0;
 }
 
-#if defined(CONFIG_DISPLAY_CPUINFO)
-static const char *get_cpu_type(void)
-{
-	struct mxs_digctl_regs *digctl_regs =
-		(struct mxs_digctl_regs *)MXS_DIGCTL_BASE;
-
-	switch (readl(&digctl_regs->hw_digctl_chipid) & HW_DIGCTL_CHIPID_MASK) {
-	case HW_DIGCTL_CHIPID_MX23:
-		return "23";
-	case HW_DIGCTL_CHIPID_MX28:
-		return "28";
-	default:
-		return "??";
-	}
-}
-
-static const char *get_cpu_rev(void)
+u32 get_cpu_rev(void)
 {
 	struct mxs_digctl_regs *digctl_regs =
 		(struct mxs_digctl_regs *)MXS_DIGCTL_BASE;
@@ -172,25 +141,34 @@ static const char *get_cpu_rev(void)
 	case HW_DIGCTL_CHIPID_MX23:
 		switch (rev) {
 		case 0x0:
-			return "1.0";
 		case 0x1:
-			return "1.1";
 		case 0x2:
-			return "1.2";
 		case 0x3:
-			return "1.3";
 		case 0x4:
-			return "1.4";
+			return (MXC_CPU_MX23 << 12) | (rev + 0x10);
 		default:
-			return "??";
+			return 0;
 		}
 	case HW_DIGCTL_CHIPID_MX28:
 		switch (rev) {
 		case 0x1:
-			return "1.2";
+			return (MXC_CPU_MX28 << 12) | 0x12;
 		default:
-			return "??";
+			return 0;
 		}
+	default:
+		return 0;
+	}
+}
+
+#if defined(CONFIG_DISPLAY_CPUINFO)
+const char *get_imx_type(u32 imxtype)
+{
+	switch (imxtype) {
+	case MXC_CPU_MX23:
+		return "23";
+	case MXC_CPU_MX28:
+		return "28";
 	default:
 		return "??";
 	}
@@ -198,12 +176,14 @@ static const char *get_cpu_rev(void)
 
 int print_cpuinfo(void)
 {
-	struct mxs_spl_data *data = (struct mxs_spl_data *)
-		((CONFIG_SYS_TEXT_BASE - sizeof(struct mxs_spl_data)) & ~0xf);
+	u32 cpurev;
+	struct mxs_spl_data *data = MXS_SPL_DATA;
 
-	printf("CPU:   Freescale i.MX%s rev%s at %d MHz\n",
-		get_cpu_type(),
-		get_cpu_rev(),
+	cpurev = get_cpu_rev();
+	printf("CPU:   Freescale i.MX%s rev%d.%d at %d MHz\n",
+		get_imx_type((cpurev & 0xFF000) >> 12),
+		(cpurev & 0x000F0) >> 4,
+		(cpurev & 0x0000F) >> 0,
 		mxc_get_clock(MXC_ARM_CLK) / 1000000);
 	printf("BOOT:  %s\n", mxs_boot_modes[data->boot_mode_idx].mode);
 	return 0;
@@ -295,8 +275,7 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 
 int mxs_dram_init(void)
 {
-	struct mxs_spl_data *data = (struct mxs_spl_data *)
-		((CONFIG_SYS_TEXT_BASE - sizeof(struct mxs_spl_data)) & ~0xf);
+	struct mxs_spl_data *data = MXS_SPL_DATA;
 
 	if (data->mem_dram_size == 0) {
 		printf("MXS:\n"

@@ -1,27 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -47,7 +30,7 @@ typedef volatile unsigned short FLASH_PORT_WIDTHV;
 ulong flash_get_size(FPWV * addr, flash_info_t * info);
 int flash_get_offsets(ulong base, flash_info_t * info);
 int write_word(flash_info_t * info, FPWV * dest, u16 data);
-void inline spin_wheel(void);
+static inline void spin_wheel(void);
 
 flash_info_t flash_info[CONFIG_SYS_MAX_FLASH_BANKS];
 
@@ -72,14 +55,16 @@ ulong flash_init(void)
 
 int flash_get_offsets(ulong base, flash_info_t * info)
 {
-	int j, k;
+	int i;
 
 	if ((info->flash_id & FLASH_VENDMASK) == FLASH_MAN_SST) {
 
 		info->start[0] = base;
-		for (k = 0, j = 0; j < CONFIG_SYS_SST_SECT; j++, k++) {
-			info->start[k + 1] = info->start[k] + CONFIG_SYS_SST_SECTSZ;
-			info->protect[k] = 0;
+		info->protect[0] = 0;
+		for (i = 1; i < CONFIG_SYS_SST_SECT; i++) {
+			info->start[i] = info->start[i - 1]
+						+ CONFIG_SYS_SST_SECTSZ;
+			info->protect[i] = 0;
 		}
 	}
 
@@ -193,7 +178,7 @@ int flash_erase(flash_info_t * info, int s_first, int s_last)
 {
 	FPWV *addr;
 	int flag, prot, sect, count;
-	ulong type, start, last;
+	ulong type, start;
 	int rcode = 0, flashtype = 0;
 
 	if ((s_first < 0) || (s_first > s_last)) {
@@ -233,7 +218,6 @@ int flash_erase(flash_info_t * info, int s_first, int s_last)
 	flag = disable_interrupts();
 
 	start = get_timer(0);
-	last = start;
 
 	if ((s_last - s_first) == (CONFIG_SYS_SST_SECT - 1)) {
 		if (prot == 0) {
@@ -335,14 +319,13 @@ int write_buff(flash_info_t * info, uchar * src, ulong addr, ulong cnt)
 {
 	ulong wp, count;
 	u16 data;
-	int rc, port_width;
+	int rc;
 
 	if (info->flash_id == FLASH_UNKNOWN)
 		return 4;
 
 	/* get lower word aligned address */
 	wp = addr;
-	port_width = sizeof(FPW);
 
 	/* handle unaligned start bytes */
 	if (wp & 1) {
@@ -455,7 +438,7 @@ int write_word(flash_info_t * info, FPWV * dest, u16 data)
 	return (res);
 }
 
-void inline spin_wheel(void)
+static inline void spin_wheel(void)
 {
 	static int p = 0;
 	static char w[] = "\\/-";

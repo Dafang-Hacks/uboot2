@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * This file contains an ECC algorithm from Toshiba that detects and
  * corrects 1 bit errors in a 256 byte block of data.
@@ -8,20 +9,6 @@
  *                         Toshiba America Electronics Components, Inc.
  *
  * Copyright (C) 2006 Thomas Gleixner <tglx@linutronix.de>
- *
- * This file is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 or (at your option) any
- * later version.
- *
- * This file is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this file; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
  *
  * As a special exception, if other files instantiate templates or use
  * macros or inline functions from these files, or you compile these
@@ -37,14 +24,9 @@
 
 #include <common.h>
 
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand_ecc.h>
-
-/* The PPC4xx NDFC uses Smart Media (SMC) bytes order */
-#ifdef CONFIG_NAND_NDFC
-#define CONFIG_MTD_NAND_ECC_SMC
-#endif
 
 /*
  * NAND-SPL has no sofware ECC for now, so don't include nand_calculate_ecc(),
@@ -122,13 +104,8 @@ int nand_calculate_ecc(struct mtd_info *mtd, const u_char *dat,
 	tmp2 |= (reg2 & 0x01) << 0; /* B7 -> B0 */
 
 	/* Calculate final ECC code */
-#ifdef CONFIG_MTD_NAND_ECC_SMC
-	ecc_code[0] = ~tmp2;
-	ecc_code[1] = ~tmp1;
-#else
 	ecc_code[0] = ~tmp1;
 	ecc_code[1] = ~tmp2;
-#endif
 	ecc_code[2] = ((~reg1) << 2) | 0x03;
 
 	return 0;
@@ -158,15 +135,9 @@ int nand_correct_data(struct mtd_info *mtd, u_char *dat,
 {
 	uint8_t s0, s1, s2;
 
-#ifdef CONFIG_MTD_NAND_ECC_SMC
-	s0 = calc_ecc[0] ^ read_ecc[0];
-	s1 = calc_ecc[1] ^ read_ecc[1];
-	s2 = calc_ecc[2] ^ read_ecc[2];
-#else
 	s1 = calc_ecc[0] ^ read_ecc[0];
 	s0 = calc_ecc[1] ^ read_ecc[1];
 	s2 = calc_ecc[2] ^ read_ecc[2];
-#endif
 	if ((s0 | s1 | s2) == 0)
 		return 0;
 

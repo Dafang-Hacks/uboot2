@@ -1,25 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Olimex MX23 Olinuxino board
  *
  * Copyright (C) 2013 Marek Vasut <marex@denx.de>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -29,7 +12,7 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
-#ifdef CONFIG_STATUS_LED
+#ifdef CONFIG_LED_STATUS
 #include <status_led.h>
 #endif
 
@@ -46,13 +29,25 @@ int board_early_init_f(void)
 	/* SSP0 clock at 96MHz */
 	mxs_set_sspclk(MXC_SSPCLK0, 96000, 0);
 
-#ifdef CONFIG_CMD_USB
-	/* Enable LAN9512 */
-	gpio_direction_output(MX23_PAD_GPMI_ALE__GPIO_0_17, 1);
-#endif
-
 	return 0;
 }
+
+#ifdef CONFIG_CMD_USB
+int board_ehci_hcd_init(int port)
+{
+	/* Enable LAN9512 (Maxi) or GL850G (Mini) USB HUB power. */
+	gpio_direction_output(MX23_PAD_GPMI_ALE__GPIO_0_17, 1);
+	udelay(100);
+	return 0;
+}
+
+int board_ehci_hcd_exit(int port)
+{
+	/* Enable LAN9512 (Maxi) or GL850G (Mini) USB HUB power. */
+	gpio_direction_output(MX23_PAD_GPMI_ALE__GPIO_0_17, 0);
+	return 0;
+}
+#endif
 
 int dram_init(void)
 {
@@ -76,8 +71,8 @@ int board_init(void)
 	/* Adress of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x100;
 
-#if defined(CONFIG_STATUS_LED) && defined(STATUS_LED_BOOT)
-	status_led_set(STATUS_LED_BOOT, STATUS_LED_STATE);
+#if defined(CONFIG_LED_STATUS) && defined(CONFIG_LED_STATUS_BOOT_ENABLE)
+	status_led_set(CONFIG_LED_STATUS_BOOT, CONFIG_LED_STATUS_STATE);
 #endif
 
 	return 0;

@@ -1,26 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2001, 2002, 2003
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  * Keith Outwater, keith_outwater@mvis.com`
  * Steven Scholz, steven.scholz@imc-berlin.de
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 /*
@@ -134,7 +117,7 @@ int rtc_get (struct rtc_time *tm){
 
 	DEBUGR ("Get RTC s since 1.1.1970: %ld\n", time1);
 
-	to_tm(time1, tm); /* To Gregorian Date */
+	rtc_to_tm(time1, tm); /* To Gregorian Date */
 
 	if (rtc_read(RTC_SR_ADDR) & RTC_SR_BIT_OSF) {
 		printf ("### Warning: RTC oscillator has stopped\n");
@@ -163,9 +146,7 @@ int rtc_set (struct rtc_time *tmp){
 	if (tmp->tm_year < 1970 || tmp->tm_year > 2069)
 		printf("WARNING: year should be between 1970 and 2069!\n");
 
-	time = mktime(tmp->tm_year, tmp->tm_mon,
-			tmp->tm_mday, tmp->tm_hour,
-			tmp->tm_min, tmp->tm_sec);
+	time = rtc_mktime(tmp);
 
 	DEBUGR ("Set RTC s since 1.1.1970: %ld (0x%02lx)\n", time, time);
 
@@ -190,8 +171,6 @@ int rtc_set (struct rtc_time *tmp){
  */
 void rtc_reset (void){
 
-	struct rtc_time tmp;
-
 	/* clear status flags */
 	rtc_write(RTC_SR_ADDR, (RTC_SR_BIT_AF|RTC_SR_BIT_OSF), false); /* clearing OSF and AF */
 
@@ -207,19 +186,6 @@ void rtc_reset (void){
 				|RTC_CTL_BIT_BBSQW), true);/* disable WD/ALM, WDSTR set to INT-pin,
 							      set BBSQW and SQW to 32k
 							      - set to 1 */
-	tmp.tm_year = 1970;
-	tmp.tm_mon = 1;
-	tmp.tm_mday= 1;
-	tmp.tm_hour = 0;
-	tmp.tm_min = 0;
-	tmp.tm_sec = 0;
-
-	rtc_set(&tmp);
-
-	printf("RTC:   %4d-%02d-%02d %2d:%02d:%02d UTC\n",
-		tmp.tm_year, tmp.tm_mon, tmp.tm_mday,
-		tmp.tm_hour, tmp.tm_min, tmp.tm_sec);
-
 	rtc_write(RTC_WD_ALM_CNT_BYTE2_ADDR, 0xAC, true);
 	rtc_write(RTC_WD_ALM_CNT_BYTE1_ADDR, 0xDE, true);
 	rtc_write(RTC_WD_ALM_CNT_BYTE2_ADDR, 0xAD, true);

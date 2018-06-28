@@ -1,29 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2009-2011 Freescale Semiconductor, Inc.
  *	Dave Liu <daveliu@freescale.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 #include <common.h>
 #include <malloc.h>
 #include <asm/io.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 
 #include "fm.h"
-#include "../../qe/qe.h"		/* For struct qe_firmware */
+#include <fsl_qe.h>		/* For struct qe_firmware */
 
 #ifdef CONFIG_SYS_QE_FMAN_FW_IN_NAND
 #include <nand.h>
@@ -35,21 +21,22 @@
 
 struct fm_muram muram[CONFIG_SYS_NUM_FMAN];
 
-u32 fm_muram_base(int fm_idx)
+void *fm_muram_base(int fm_idx)
 {
 	return muram[fm_idx].base;
 }
 
-u32 fm_muram_alloc(int fm_idx, u32 size, u32 align)
+void *fm_muram_alloc(int fm_idx, size_t size, ulong align)
 {
-	u32 ret;
-	u32 align_mask, off;
-	u32 save;
+	void *ret;
+	ulong align_mask;
+	size_t off;
+	void *save;
 
 	align_mask = align - 1;
 	save = muram[fm_idx].alloc;
 
-	off = save & align_mask;
+	off = (ulong)save & align_mask;
 	if (off != 0)
 		muram[fm_idx].alloc += (align - off);
 	off = size & align_mask;
@@ -58,6 +45,7 @@ u32 fm_muram_alloc(int fm_idx, u32 size, u32 align)
 	if ((muram[fm_idx].alloc + size) >= muram[fm_idx].top) {
 		muram[fm_idx].alloc = save;
 		printf("%s: run out of ram.\n", __func__);
+		return NULL;
 	}
 
 	ret = muram[fm_idx].alloc;
@@ -69,7 +57,7 @@ u32 fm_muram_alloc(int fm_idx, u32 size, u32 align)
 
 static void fm_init_muram(int fm_idx, void *reg)
 {
-	u32 base = (u32)reg;
+	void *base = reg;
 
 	muram[fm_idx].base = base;
 	muram[fm_idx].size = CONFIG_SYS_FM_MURAM_SIZE;
@@ -93,11 +81,11 @@ static void fm_upload_ucode(int fm_idx, struct fm_imem *imem,
 	out_be32(&imem->iadd, IRAM_IADD_AIE);
 	/* write microcode to IRAM */
 	for (i = 0; i < size / 4; i++)
-		out_be32(&imem->idata, ucode[i]);
+		out_be32(&imem->idata, (be32_to_cpu(ucode[i])));
 
 	/* verify if the writing is over */
 	out_be32(&imem->iadd, 0);
-	while ((in_be32(&imem->idata) != ucode[0]) && --timeout)
+	while ((in_be32(&imem->idata) != be32_to_cpu(ucode[0])) && --timeout)
 		;
 	if (!timeout)
 		printf("Fman%u: microcode upload timeout\n", fm_idx + 1);
@@ -190,14 +178,15 @@ static int fman_upload_firmware(int fm_idx,
 		const struct qe_microcode *ucode = &firmware->microcode[i];
 
 		/* Upload a microcode if it's present */
-		if (ucode->code_offset) {
+		if (be32_to_cpu(ucode->code_offset)) {
 			u32 ucode_size;
 			u32 *code;
 			printf("Fman%u: Uploading microcode version %u.%u.%u\n",
 			       fm_idx + 1, ucode->major, ucode->minor,
 			       ucode->revision);
-			code = (void *)firmware + ucode->code_offset;
-			ucode_size = sizeof(u32) * ucode->count;
+			code = (void *)firmware +
+			       be32_to_cpu(ucode->code_offset);
+			ucode_size = sizeof(u32) * be32_to_cpu(ucode->count);
 			fm_upload_ucode(fm_idx, fm_imem, code, ucode_size);
 		}
 	}
@@ -268,7 +257,9 @@ static void fm_init_fpm(struct fm_fpm *fpm)
 static int fm_init_bmi(int fm_idx, struct fm_bmi_common *bmi)
 {
 	int blk, i, port_id;
-	u32 val, offset, base;
+	u32 val;
+	size_t offset;
+	void *base;
 
 	/* alloc free buffer pool in MURAM */
 	base = fm_muram_alloc(fm_idx, FM_FREE_POOL_SIZE, FM_FREE_POOL_ALIGN);
@@ -344,9 +335,6 @@ static int fm_init_bmi(int fm_idx, struct fm_bmi_common *bmi)
 
 static void fm_init_qmi(struct fm_qmi_common *qmi)
 {
-	/* disable enqueue and dequeue of QMI */
-	clrbits_be32(&qmi->fmqm_gc, FMQM_GC_ENQ_EN | FMQM_GC_DEQ_EN);
-
 	/* disable all error interrupts */
 	out_be32(&qmi->fmqm_eien, FMQM_EIEN_DISABLE_ALL);
 	/* clear all error events */
@@ -363,28 +351,39 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 {
 	int rc;
 #if defined(CONFIG_SYS_QE_FMAN_FW_IN_NOR)
-	void *addr = (void *)CONFIG_SYS_QE_FMAN_FW_ADDR;
+	void *addr = (void *)CONFIG_SYS_FMAN_FW_ADDR;
 #elif defined(CONFIG_SYS_QE_FMAN_FW_IN_NAND)
 	size_t fw_length = CONFIG_SYS_QE_FMAN_FW_LENGTH;
 	void *addr = malloc(CONFIG_SYS_QE_FMAN_FW_LENGTH);
 
-	rc = nand_read(&nand_info[0], (loff_t)CONFIG_SYS_QE_FMAN_FW_ADDR,
+	rc = nand_read(get_nand_dev_by_index(0),
+		       (loff_t)CONFIG_SYS_FMAN_FW_ADDR,
 		       &fw_length, (u_char *)addr);
 	if (rc == -EUCLEAN) {
 		printf("NAND read of FMAN firmware at offset 0x%x failed %d\n",
-			CONFIG_SYS_QE_FMAN_FW_ADDR, rc);
+			CONFIG_SYS_FMAN_FW_ADDR, rc);
 	}
 #elif defined(CONFIG_SYS_QE_FW_IN_SPIFLASH)
 	struct spi_flash *ucode_flash;
 	void *addr = malloc(CONFIG_SYS_QE_FMAN_FW_LENGTH);
 	int ret = 0;
 
+#ifdef CONFIG_DM_SPI_FLASH
+	struct udevice *new;
+
+	/* speed and mode will be read from DT */
+	ret = spi_flash_probe_bus_cs(CONFIG_ENV_SPI_BUS, CONFIG_ENV_SPI_CS,
+				     0, 0, &new);
+
+	ucode_flash = dev_get_uclass_priv(new);
+#else
 	ucode_flash = spi_flash_probe(CONFIG_ENV_SPI_BUS, CONFIG_ENV_SPI_CS,
 			CONFIG_ENV_SPI_MAX_HZ, CONFIG_ENV_SPI_MODE);
+#endif
 	if (!ucode_flash)
 		printf("SF: probe for ucode failed\n");
 	else {
-		ret = spi_flash_read(ucode_flash, CONFIG_SYS_QE_FMAN_FW_ADDR,
+		ret = spi_flash_read(ucode_flash, CONFIG_SYS_FMAN_FW_ADDR,
 				CONFIG_SYS_QE_FMAN_FW_LENGTH, addr);
 		if (ret)
 			printf("SF: read for ucode failed\n");
@@ -394,7 +393,7 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 	int dev = CONFIG_SYS_MMC_ENV_DEV;
 	void *addr = malloc(CONFIG_SYS_QE_FMAN_FW_LENGTH);
 	u32 cnt = CONFIG_SYS_QE_FMAN_FW_LENGTH / 512;
-	u32 blk = CONFIG_SYS_QE_FMAN_FW_ADDR / 512;
+	u32 blk = CONFIG_SYS_FMAN_FW_ADDR / 512;
 	struct mmc *mmc = find_mmc_device(CONFIG_SYS_MMC_ENV_DEV);
 
 	if (!mmc)
@@ -403,19 +402,20 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 		printf("\nMMC read: dev # %u, block # %u, count %u ...\n",
 				dev, blk, cnt);
 		mmc_init(mmc);
-		(void)mmc->block_dev.block_read(dev, blk, cnt, addr);
-		/* flush cache after read */
-		flush_cache((ulong)addr, cnt * 512);
+		(void)mmc->block_dev.block_read(&mmc->block_dev, blk, cnt,
+						addr);
 	}
 #elif defined(CONFIG_SYS_QE_FMAN_FW_IN_REMOTE)
-	void *addr = (void *)CONFIG_SYS_QE_FMAN_FW_ADDR;
+	void *addr = (void *)CONFIG_SYS_FMAN_FW_ADDR;
+#else
+	void *addr = NULL;
 #endif
 
 	/* Upload the Fman microcode if it's present */
 	rc = fman_upload_firmware(index, &reg->fm_imem, addr);
 	if (rc)
 		return rc;
-	setenv_addr("fman_ucode", addr);
+	env_set_addr("fman_ucode", addr);
 
 	fm_init_muram(index, &reg->muram);
 	fm_init_qmi(&reg->fm_qmi_common);

@@ -1,23 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2005-2006 Atmel Corporation
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 #ifndef __DRIVERS_MACB_H__
 #define __DRIVERS_MACB_H__
@@ -27,6 +10,7 @@
 #define MACB_NCFGR				0x0004
 #define MACB_NSR				0x0008
 #define GEM_UR					0x000c
+#define MACB_DMACFG				0x0010
 #define MACB_TSR				0x0014
 #define MACB_RBQP				0x0018
 #define MACB_TBQP				0x001c
@@ -73,6 +57,16 @@
 #define MACB_USRIO				0x00c0
 #define MACB_WOL				0x00c4
 #define MACB_MID				0x00fc
+
+/* GEM specific register offsets */
+#define GEM_DCFG1				0x0280
+#define GEM_DCFG6				0x0294
+
+#define MACB_MAX_QUEUES				8
+
+/* GEM specific multi queues register offset */
+/* hw_q can be 0~7 */
+#define GEM_TBQP(hw_q)				(0x0440 + ((hw_q) << 2))
 
 /* Bitfields in NCR */
 #define MACB_LB_OFFSET				0
@@ -258,6 +252,14 @@
 #define MACB_IDNUM_SIZE				16
 
 /* Bitfields in DCFG1 */
+#define GEM_DBWDEF_OFFSET			25
+#define GEM_DBWDEF_SIZE				3
+
+/* constants for data bus width */
+#define GEM_DBW32				0
+#define GEM_DBW64				1
+#define GEM_DBW128				2
+
 /* Constants for CLK */
 #define MACB_CLK_DIV8				0
 #define MACB_CLK_DIV16				1
@@ -314,5 +316,7 @@
 	readl((port)->regs + GEM_##reg)
 #define gem_writel(port, reg, value)			\
 	writel((value), (port)->regs + GEM_##reg)
+#define gem_writel_queue_TBQP(port, value, queue_num)	\
+	writel((value), (port)->regs + GEM_TBQP(queue_num))
 
 #endif /* __DRIVERS_MACB_H__ */

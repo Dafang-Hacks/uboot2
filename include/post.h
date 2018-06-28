@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -5,24 +6,6 @@
  * (C) Copyright 2010
  * Michael Zaidman, Kodak, michael.zaidman@kodak.com
  * post_word_{load|store} cleanup.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 #ifndef _POST_H
 #define _POST_H
@@ -31,30 +14,15 @@
 #include <common.h>
 #include <asm/io.h>
 
-#if defined(CONFIG_POST) || defined(CONFIG_LOGBUFFER)
+#if defined(CONFIG_POST)
 
 #ifndef CONFIG_POST_EXTERNAL_WORD_FUNCS
 #ifdef CONFIG_SYS_POST_WORD_ADDR
 #define _POST_WORD_ADDR	CONFIG_SYS_POST_WORD_ADDR
 #else
 
-#ifdef CONFIG_MPC5xxx
-#define _POST_WORD_ADDR	(MPC5XXX_SRAM + MPC5XXX_SRAM_POST_SIZE)
-
-#elif defined(CONFIG_MPC512X)
-#define _POST_WORD_ADDR \
-	(CONFIG_SYS_SRAM_BASE + CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
-
-#elif defined(CONFIG_8xx)
-#define _POST_WORD_ADDR \
-	(((immap_t *)CONFIG_SYS_IMMR)->im_cpm.cp_dpmem + CPM_POST_WORD_ADDR)
-
-#elif defined(CONFIG_MPC8260)
-#include <asm/cpm_8260.h>
-#define _POST_WORD_ADDR	(CONFIG_SYS_IMMR + CPM_POST_WORD_ADDR)
-
-#elif defined(CONFIG_MPC8360)
-#include <asm/immap_qe.h>
+#if defined(CONFIG_MPC8360)
+#include <linux/immap_qe.h>
 #define _POST_WORD_ADDR	(CONFIG_SYS_IMMR + CPM_POST_WORD_ADDR)
 
 #elif defined (CONFIG_MPC85xx)
@@ -66,10 +34,6 @@
 #include <asm/immap_86xx.h>
 #define _POST_WORD_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC86xx_PIC_OFFSET + \
 				offsetof(ccsr_pic_t, tfrr))
-
-#elif defined (CONFIG_4xx)
-#define _POST_WORD_ADDR \
-	(CONFIG_SYS_OCM_DATA_ADDR + CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
 #endif
 
 #ifndef _POST_WORD_ADDR
@@ -93,7 +57,7 @@ extern ulong post_word_load(void);
 extern void post_word_store(ulong value);
 
 #endif /* CONFIG_POST_EXTERNAL_WORD_FUNCS */
-#endif /* defined (CONFIG_POST) || defined(CONFIG_LOGBUFFER) */
+#endif /* defined (CONFIG_POST) */
 #endif /* __ASSEMBLY__ */
 
 #ifdef CONFIG_POST
@@ -180,7 +144,6 @@ extern int memory_post_test(int flags);
 #define CONFIG_SYS_POST_CACHE		0x00000020
 #define CONFIG_SYS_POST_UART		0x00000040
 #define CONFIG_SYS_POST_ETHER		0x00000080
-#define CONFIG_SYS_POST_SPI		0x00000100
 #define CONFIG_SYS_POST_USB		0x00000200
 #define CONFIG_SYS_POST_SPR		0x00000400
 #define CONFIG_SYS_POST_SYSMON		0x00000800

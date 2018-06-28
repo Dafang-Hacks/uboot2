@@ -1,24 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2004-2010
  * Texas Instruments, <www.ti.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 #ifndef _OMAP2PLUS_I2C_H_
 #define _OMAP2PLUS_I2C_H_
@@ -137,17 +120,17 @@
  * scll_trim = 7
  * sclh_trim = 5
  *
- * The linux 2.6.30 kernel uses
- * scll_trim = 6
- * sclh_trim = 6
+ * The linux 4.9 kernel uses
+ * scll_trim = 7
+ * sclh_trim = 5
  *
  * These are the trim values for standard and fast speed
  */
 #ifndef I2C_FASTSPEED_SCLL_TRIM
-#define I2C_FASTSPEED_SCLL_TRIM		6
+#define I2C_FASTSPEED_SCLL_TRIM		7
 #endif
 #ifndef I2C_FASTSPEED_SCLH_TRIM
-#define I2C_FASTSPEED_SCLH_TRIM		6
+#define I2C_FASTSPEED_SCLH_TRIM		5
 #endif
 
 /* These are the trim values for high speed */

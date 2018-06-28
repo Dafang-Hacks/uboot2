@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009
  * Net Insight <www.netinsight.net>
@@ -7,30 +8,13 @@
  * (C) Copyright 2009
  * Marvell Semiconductor <www.marvell.com>
  * Written-by: Prafulla Wadaskar <prafulla@marvell.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301 USA
  */
 
 #include <common.h>
 #include <miiphy.h>
+#include <asm/mach-types.h>
 #include <asm/arch/cpu.h>
-#include <asm/arch/kirkwood.h>
+#include <asm/arch/soc.h>
 #include <asm/arch/mpp.h>
 #include "openrd.h"
 
@@ -43,9 +27,9 @@ int board_early_init_f(void)
 	 * There are maximum 64 gpios controlled through 2 sets of registers
 	 * the  below configuration configures mainly initial LED status
 	 */
-	kw_config_gpio(OPENRD_OE_VAL_LOW,
-			OPENRD_OE_VAL_HIGH,
-			OPENRD_OE_LOW, OPENRD_OE_HIGH);
+	mvebu_config_gpio(OPENRD_OE_VAL_LOW,
+			  OPENRD_OE_VAL_HIGH,
+			  OPENRD_OE_LOW, OPENRD_OE_HIGH);
 
 	/* Multi-Purpose Pins Functionality configuration */
 	static const u32 kwmpp_config[] = {
@@ -120,7 +104,7 @@ int board_init(void)
 #endif
 
 	/* adress of boot parameters */
-	gd->bd->bi_boot_params = kw_sdram_bar(0) + 0x100;
+	gd->bd->bi_boot_params = mvebu_sdram_bar(0) + 0x100;
 	return 0;
 }
 
@@ -135,9 +119,8 @@ void mv_phy_init(char *name)
 		return;
 
 	/* command to read PHY dev address */
-	if (miiphy_read(name, 0xEE, 0xEE, (u16 *) &devadr)) {
-		printf("Err..%s could not read PHY dev address\n",
-			__FUNCTION__);
+	if (miiphy_read(name, 0xEE, 0xEE, (u16 *)&devadr)) {
+		printf("Err..%s could not read PHY dev address\n", __func__);
 		return;
 	}
 

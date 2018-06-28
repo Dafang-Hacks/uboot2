@@ -1,26 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2000-2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -186,7 +169,7 @@ int get_clocks(void)
 		tsec1_clk = csb_clk / 3;
 		break;
 	default:
-		/* unkown SCCR_TSEC1CM value */
+		/* unknown SCCR_TSEC1CM value */
 		return -2;
 	}
 #endif
@@ -207,7 +190,7 @@ int get_clocks(void)
 		usbdr_clk = csb_clk / 3;
 		break;
 	default:
-		/* unkown SCCR_USBDRCM value */
+		/* unknown SCCR_USBDRCM value */
 		return -3;
 	}
 #endif
@@ -228,7 +211,7 @@ int get_clocks(void)
 		tsec2_clk = csb_clk / 3;
 		break;
 	default:
-		/* unkown SCCR_TSEC2CM value */
+		/* unknown SCCR_TSEC2CM value */
 		return -4;
 	}
 #elif defined(CONFIG_MPC8313)
@@ -255,7 +238,7 @@ int get_clocks(void)
 		usbmph_clk = csb_clk / 3;
 		break;
 	default:
-		/* unkown SCCR_USBMPHCM value */
+		/* unknown SCCR_USBMPHCM value */
 		return -5;
 	}
 
@@ -282,7 +265,7 @@ int get_clocks(void)
 		enc_clk = csb_clk / 3;
 		break;
 	default:
-		/* unkown SCCR_ENCCM value */
+		/* unknown SCCR_ENCCM value */
 		return -7;
 	}
 #endif
@@ -302,7 +285,7 @@ int get_clocks(void)
 		sdhc_clk = csb_clk / 3;
 		break;
 	default:
-		/* unkown SCCR_SDHCCM value */
+		/* unknown SCCR_SDHCCM value */
 		return -8;
 	}
 #endif
@@ -321,7 +304,7 @@ int get_clocks(void)
 		tdm_clk = csb_clk / 3;
 		break;
 	default:
-		/* unkown SCCR_TDMCM value */
+		/* unknown SCCR_TDMCM value */
 		return -8;
 	}
 #endif
@@ -361,7 +344,7 @@ int get_clocks(void)
 		pciexp1_clk = csb_clk / 3;
 		break;
 	default:
-		/* unkown SCCR_PCIEXP1CM value */
+		/* unknown SCCR_PCIEXP1CM value */
 		return -9;
 	}
 
@@ -379,7 +362,7 @@ int get_clocks(void)
 		pciexp2_clk = csb_clk / 3;
 		break;
 	default:
-		/* unkown SCCR_PCIEXP2CM value */
+		/* unknown SCCR_PCIEXP2CM value */
 		return -10;
 	}
 #endif
@@ -399,7 +382,7 @@ int get_clocks(void)
 		sata_clk = csb_clk / 3;
 		break;
 	default:
-		/* unkown SCCR_SATACM value */
+		/* unknown SCCR_SATA1CM value */
 		return -11;
 	}
 #endif
@@ -428,8 +411,8 @@ int get_clocks(void)
 #endif
 
 	corecnf_tab_index = ((corepll & 0x1F) << 2) | ((corepll & 0x60) >> 5);
-	if (corecnf_tab_index > (sizeof(corecnf_tab) / sizeof(corecnf_t))) {
-		/* corecnf_tab_index is too high, possibly worng value */
+	if (corecnf_tab_index > (ARRAY_SIZE(corecnf_tab))) {
+		/* corecnf_tab_index is too high, possibly wrong value */
 		return -11;
 	}
 	switch (corecnf_tab[corecnf_tab_index].core_csb_ratio) {
@@ -451,7 +434,7 @@ int get_clocks(void)
 		core_clk = 3 * csb_clk;
 		break;
 	default:
-		/* unkown core to csb ratio */
+		/* unknown core to csb ratio */
 		return -13;
 	}
 

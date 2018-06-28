@@ -1,24 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2012-2013
  * Texas Instruments, <www.ti.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 #include <config.h>
 #include <palmas.h>
@@ -39,25 +22,43 @@ void palmas_init_settings(void)
 #endif
 }
 
-int palmas_mmc1_poweron_ldo(void)
+#if defined(CONFIG_OMAP54XX)
+int lp873x_mmc1_poweron_ldo(uint voltage)
+{
+	if (palmas_i2c_write_u8(LP873X_LDO1_ADDR, LP873X_LDO1_VOLTAGE,
+				voltage)) {
+		printf("lp873x: could not set LDO1 voltage.\n");
+		return 1;
+	}
+	/* TURN ON LDO1 */
+	if (palmas_i2c_write_u8(LP873X_LDO1_ADDR, LP873X_LDO1_CTRL,
+				LP873X_LDO_CTRL_EN | LP873X_LDO_CTRL_RDIS_EN)) {
+		printf("lp873x: could not turn on LDO1.\n");
+		return 1;
+	}
+	return 0;
+
+}
+#endif
+
+int palmas_mmc1_poweron_ldo(uint ldo_volt, uint ldo_ctrl, uint voltage)
 {
 	u8 val = 0;
 
 #if defined(CONFIG_DRA7XX)
-	/*
-	 * Currently valid for the dra7xx_evm board:
-	 * Set TPS659038 LDO1 to 3.0 V
-	 */
-	val = LDO_VOLT_3V0;
-	if (palmas_i2c_write_u8(TPS65903X_CHIP_P1, LDO1_VOLTAGE, val)) {
+	int ret;
+
+	ret = palmas_i2c_write_u8(TPS65903X_CHIP_P1, ldo_volt, voltage);
+	if (ret) {
 		printf("tps65903x: could not set LDO1 voltage.\n");
-		return 1;
+		return ret;
 	}
 	/* TURN ON LDO1 */
 	val = RSC_MODE_SLEEP | RSC_MODE_ACTIVE;
-	if (palmas_i2c_write_u8(TPS65903X_CHIP_P1, LDO1_CTRL, val)) {
+	ret = palmas_i2c_write_u8(TPS65903X_CHIP_P1, ldo_ctrl, val);
+	if (ret) {
 		printf("tps65903x: could not turn on LDO1.\n");
-		return 1;
+		return ret;
 	}
 	return 0;
 #else
@@ -140,6 +141,21 @@ int twl603x_audio_power(u8 on)
 		printf("twl603x: could not turn CLK32KGAUDIO %s: err = %d\n",
 		       c32k ? "on" : "off", err);
 	return err;
+}
+#endif
+
+#ifdef CONFIG_PALMAS_USB_SS_PWR
+/**
+ * @brief palmas_enable_ss_ldo - Configure EVM board specific configurations
+ * for the USB Super speed SMPS10 regulator.
+ *
+ * @return 0
+ */
+int palmas_enable_ss_ldo(void)
+{
+	/* Enable smps10 regulator  */
+	return palmas_i2c_write_u8(TWL603X_CHIP_P1, SMPS10_CTRL,
+				SMPS10_MODE_ACTIVE_D);
 }
 #endif
 

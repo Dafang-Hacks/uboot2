@@ -1,19 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * hardware.h
  *
  * hardware specific header
  *
  * Copyright (C) 2013, Texas Instruments, Incorporated - http://www.ti.com/
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR /PURPOSE.  See the
- * GNU General Public License for more details.
  */
 
 #ifndef __AM33XX_HARDWARE_H
@@ -23,8 +14,12 @@
 #include <asm/arch/omap.h>
 #ifdef CONFIG_AM33XX
 #include <asm/arch/hardware_am33xx.h>
+#elif defined(CONFIG_TI816X)
+#include <asm/arch/hardware_ti816x.h>
 #elif defined(CONFIG_TI814X)
 #include <asm/arch/hardware_ti814x.h>
+#elif defined(CONFIG_AM43XX)
+#include <asm/arch/hardware_am43xx.h>
 #endif
 
 /*
@@ -52,29 +47,24 @@
 #define EMIF4_0_CFG_BASE		0x4C000000
 #define EMIF4_1_CFG_BASE		0x4D000000
 
-/* PLL related registers */
-#define CM_PER				0x44E00000
-#define CM_WKUP				0x44E00400
-#define CM_DPLL				0x44E00500
-#define CM_DEVICE			0x44E00700
-#define CM_RTC				0x44E00800
-#define CM_CEFUSE			0x44E00A00
-#define PRM_DEVICE			0x44E00F00
-
-/* VTP Base address */
-#define VTP1_CTRL_ADDR			0x48140E10
-
 /* DDR Base address */
 #define DDR_CTRL_ADDR			0x44E10E04
 #define DDR_CONTROL_BASE_ADDR		0x44E11404
-#define DDR_PHY_CMD_ADDR2		0x47C0C800
-#define DDR_PHY_DATA_ADDR2		0x47C0C8C8
 
 /* UART */
-#define DEFAULT_UART_BASE		UART0_BASE
-
-#define DDRPHY_0_CONFIG_BASE		(CTRL_BASE + 0x1400)
-#define DDRPHY_CONFIG_BASE		DDRPHY_0_CONFIG_BASE
+#if CONFIG_CONS_INDEX == 1
+#	define DEFAULT_UART_BASE UART0_BASE
+#elif CONFIG_CONS_INDEX == 2
+#	define DEFAULT_UART_BASE UART1_BASE
+#elif CONFIG_CONS_INDEX == 3
+#	define DEFAULT_UART_BASE UART2_BASE
+#elif CONFIG_CONS_INDEX == 4
+#	define DEFAULT_UART_BASE UART3_BASE
+#elif CONFIG_CONS_INDEX == 5
+#	define DEFAULT_UART_BASE UART4_BASE
+#elif CONFIG_CONS_INDEX == 6
+#	define DEFAULT_UART_BASE UART5_BASE
+#endif
 
 /* GPMC Base address */
 #define GPMC_BASE			0x50000000
@@ -82,8 +72,18 @@
 /* CPSW Config space */
 #define CPSW_BASE			0x4A100000
 
-/* OTG */
-#define USB0_OTG_BASE			0x47401000
-#define USB1_OTG_BASE			0x47401800
+/* Control status register */
+#define CTRL_CRYSTAL_FREQ_SRC_MASK		(1 << 31)
+#define CTRL_CRYSTAL_FREQ_SRC_SHIFT		31
+#define CTRL_CRYSTAL_FREQ_SELECTION_MASK	(0x3 << 29)
+#define CTRL_CRYSTAL_FREQ_SELECTION_SHIFT	29
+#define CTRL_SYSBOOT_15_14_MASK			(0x3 << 22)
+#define CTRL_SYSBOOT_15_14_SHIFT		22
 
+#define CTRL_CRYSTAL_FREQ_SRC_SYSBOOT		0x0
+#define CTRL_CRYSTAL_FREQ_SRC_EFUSE		0x1
+
+#define NUM_CRYSTAL_FREQ			0x4
+
+int clk_get(int clk);
 #endif /* __AM33XX_HARDWARE_H */

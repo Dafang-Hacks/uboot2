@@ -1,20 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 /* Taken from Linux kernel, commit f56c3196 */
@@ -35,6 +21,8 @@ extern char __kprobes_text_start[], __kprobes_text_end[];
 extern char __entry_text_start[], __entry_text_end[];
 extern char __initdata_begin[], __initdata_end[];
 extern char __start_rodata[], __end_rodata[];
+extern char __efi_helloworld_begin[];
+extern char __efi_helloworld_end[];
 
 /* Start and end of .ctors section - used for constructor calls. */
 extern char __ctors_start[], __ctors_end[];
@@ -76,28 +64,17 @@ extern char __image_copy_end[];
 extern void _start(void);
 
 /*
- * ARM needs to use offsets for symbols, since the values of some symbols
- * are not resolved prior to relocation (and are just 0). Maybe this can be
- * resolved, or maybe other architectures are similar, iwc this should be
- * promoted to an architecture option.
+ * ARM defines its symbols as char[]. Other arches define them as ulongs.
  */
 #ifdef CONFIG_ARM
-#define CONFIG_SYS_SYM_OFFSETS
-#endif
 
-#ifdef CONFIG_SYS_SYM_OFFSETS
-/* Start/end of the relocation entries, as an offset from _start */
-extern ulong _rel_dyn_start_ofs;
-extern ulong _rel_dyn_end_ofs;
-
-/* End of the region to be relocated, as an offset form _start */
-extern ulong _image_copy_end_ofs;
-
-extern ulong _bss_start_ofs;	/* BSS start relative to _start */
-extern ulong _bss_end_ofs;		/* BSS end relative to _start */
-extern ulong _end_ofs;		/* end of image relative to _start */
-
-extern ulong _TEXT_BASE;	/* code start */
+extern char __bss_start[];
+extern char __bss_end[];
+extern char __image_copy_start[];
+extern char __image_copy_end[];
+extern char _image_binary_end[];
+extern char __rel_dyn_start[];
+extern char __rel_dyn_end[];
 
 #else /* don't use offsets: */
 
@@ -106,6 +83,7 @@ extern ulong __data_end;
 extern ulong __rel_dyn_start;
 extern ulong __rel_dyn_end;
 extern ulong __bss_end;
+extern ulong _image_binary_end;
 
 extern ulong _TEXT_BASE;	/* code start */
 

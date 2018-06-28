@@ -1,24 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2000-2009
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 /*
@@ -27,7 +10,6 @@
 #ifndef __COMMAND_H
 #define __COMMAND_H
 
-#include <config.h>
 #include <linker_lists.h>
 
 #ifndef NULL
@@ -80,6 +62,15 @@ extern int var_complete(int argc, char * const argv[], char last_char, int maxv,
 extern int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp);
 #endif
 
+/**
+ * cmd_process_error() - report and process a possible error
+ *
+ * @cmdtp: Command which caused the error
+ * @err: Error code (0 if none, -ve for error, like -EIO)
+ * @return 0 if there is not error, 1 (CMD_RET_FAILURE) if an error is found
+ */
+int cmd_process_error(cmd_tbl_t *cmdtp, int err);
+
 /*
  * Monitor Command
  *
@@ -88,11 +79,10 @@ extern int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *
  * void function (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
  */
 
-#if defined(CONFIG_CMD_MEMORY)		\
-	|| defined(CONFIG_CMD_I2C)	\
-	|| defined(CONFIG_CMD_ITEST)	\
-	|| defined(CONFIG_CMD_PCI)	\
-	|| defined(CONFIG_CMD_PORTIO)
+#if defined(CONFIG_CMD_MEMORY) || \
+	defined(CONFIG_CMD_I2C) || \
+	defined(CONFIG_CMD_ITEST) || \
+	defined(CONFIG_CMD_PCI)
 #define CMD_DATA_SIZE
 extern int cmd_get_data_size(char* arg, int default_size);
 #endif
@@ -112,11 +102,16 @@ static inline int bootm_maybe_autostart(cmd_tbl_t *cmdtp, const char *cmd)
 
 extern int do_bootz(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 
+extern int do_booti(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
+
 extern int common_diskboot(cmd_tbl_t *cmdtp, const char *intf, int argc,
 			   char *const argv[]);
 
 extern int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
+extern int do_poweroff(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 
+extern unsigned long do_go_exec(ulong (*entry)(int, char * const []), int argc,
+				char * const argv[]);
 /*
  * Error codes that commands return to cmd_process(). We use the standard 0
  * and 1 for success and failure, but add one more case - failure with a
@@ -148,6 +143,25 @@ enum command_ret_t {
 int cmd_process(int flag, int argc, char * const argv[],
 			       int *repeatable, unsigned long *ticks);
 
+void fixup_cmdtable(cmd_tbl_t *cmdtp, int size);
+
+/**
+ * board_run_command() - Fallback function to execute a command
+ *
+ * When no command line features are enabled in U-Boot, this function is
+ * called to execute a command. Typically the function can look at the
+ * command and perform a few very specific tasks, such as booting the
+ * system in a particular way.
+ *
+ * This function is only used when CONFIG_CMDLINE is not enabled.
+ *
+ * In normal situations this function should not return, since U-Boot will
+ * simply hang.
+ *
+ * @cmdline:	Command line string to execute
+ * @return 0 if OK, 1 for error
+ */
+int board_run_command(const char *cmdline);
 #endif	/* __ASSEMBLY__ */
 
 /*
@@ -155,6 +169,7 @@ int cmd_process(int flag, int argc, char * const argv[],
  */
 #define CMD_FLAG_REPEAT		0x0001	/* repeat last command		*/
 #define CMD_FLAG_BOOTD		0x0002	/* command is from bootd	*/
+#define CMD_FLAG_ENV		0x0004	/* command is from the environment */
 
 #ifdef CONFIG_AUTO_COMPLETE
 # define _CMD_COMPLETE(x) x,
@@ -167,25 +182,44 @@ int cmd_process(int flag, int argc, char * const argv[],
 # define _CMD_HELP(x)
 #endif
 
+#ifdef CONFIG_CMDLINE
 #define U_BOOT_CMD_MKENT_COMPLETE(_name, _maxargs, _rep, _cmd,		\
 				_usage, _help, _comp)			\
 		{ #_name, _maxargs, _rep, _cmd, _usage,			\
 			_CMD_HELP(_help) _CMD_COMPLETE(_comp) }
-
-#define U_BOOT_CMD_MKENT(_name, _maxargs, _rep, _cmd, _usage, _help)	\
-	U_BOOT_CMD_MKENT_COMPLETE(_name, _maxargs, _rep, _cmd,		\
-					_usage, _help, NULL)
 
 #define U_BOOT_CMD_COMPLETE(_name, _maxargs, _rep, _cmd, _usage, _help, _comp) \
 	ll_entry_declare(cmd_tbl_t, _name, cmd) =			\
 		U_BOOT_CMD_MKENT_COMPLETE(_name, _maxargs, _rep, _cmd,	\
 						_usage, _help, _comp);
 
+#else
+#define U_BOOT_SUBCMD_START(name)	static cmd_tbl_t name[] = {};
+#define U_BOOT_SUBCMD_END
+
+#define _CMD_REMOVE(_name, _cmd)					\
+	int __remove_ ## _name(void)					\
+	{								\
+		if (0)							\
+			_cmd(NULL, 0, 0, NULL);				\
+		return 0;						\
+	}
+#define U_BOOT_CMD_MKENT_COMPLETE(_name, _maxargs, _rep, _cmd, _usage,	\
+				  _help, _comp)				\
+		{ #_name, _maxargs, _rep, 0 ? _cmd : NULL, _usage,	\
+			_CMD_HELP(_help) _CMD_COMPLETE(_comp) }
+
+#define U_BOOT_CMD_COMPLETE(_name, _maxargs, _rep, _cmd, _usage, _help,	\
+			    _comp)				\
+	_CMD_REMOVE(sub_ ## _name, _cmd)
+
+#endif /* CONFIG_CMDLINE */
+
 #define U_BOOT_CMD(_name, _maxargs, _rep, _cmd, _usage, _help)		\
 	U_BOOT_CMD_COMPLETE(_name, _maxargs, _rep, _cmd, _usage, _help, NULL)
 
-#if defined(CONFIG_NEEDS_MANUAL_RELOC)
-void fixup_cmdtable(cmd_tbl_t *cmdtp, int size);
-#endif
+#define U_BOOT_CMD_MKENT(_name, _maxargs, _rep, _cmd, _usage, _help)	\
+	U_BOOT_CMD_MKENT_COMPLETE(_name, _maxargs, _rep, _cmd,		\
+					_usage, _help, NULL)
 
 #endif	/* __COMMAND_H */

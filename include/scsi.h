@@ -1,30 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2001
  * Denis Peter, MPL AG Switzerland
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- *
  */
  #ifndef _SCSI_H
  #define _SCSI_H
 
-typedef struct SCSI_cmd_block{
+struct scsi_cmd {
 	unsigned char		cmd[16];					/* command				   */
 	/* for request sense */
 	unsigned char		sense_buf[64]
@@ -44,7 +26,7 @@ typedef struct SCSI_cmd_block{
 	unsigned long		trans_bytes;			/* tranfered bytes		*/
 
 	unsigned int		priv;
-}ccb;
+};
 
 /*-----------------------------------------------------------
 **
@@ -149,6 +131,7 @@ typedef struct SCSI_cmd_block{
 #define SCSI_MED_REMOVL	0x1E		/* Prevent/Allow medium Removal (O) */
 #define SCSI_READ6		0x08		/* Read 6-byte (MANDATORY) */
 #define SCSI_READ10		0x28		/* Read 10-byte (MANDATORY) */
+#define SCSI_READ16	0x48
 #define SCSI_RD_CAPAC	0x25		/* Read Capacity (MANDATORY) */
 #define SCSI_RD_CAPAC10	SCSI_RD_CAPAC	/* Read Capacity (10) */
 #define SCSI_RD_CAPAC16	0x9e		/* Read Capacity (16) */
@@ -174,25 +157,79 @@ typedef struct SCSI_cmd_block{
 #define SCSI_WRITE_LONG	0x3F		/* Write Long (O) */
 #define SCSI_WRITE_SAME	0x41		/* Write Same (O) */
 
-
-/****************************************************************************
- * decleration of functions which have to reside in the LowLevel Part Driver
+/**
+ * struct scsi_platdata - stores information about SCSI controller
+ *
+ * @base: Controller base address
+ * @max_lun: Maximum number of logical units
+ * @max_id: Maximum number of target ids
  */
+struct scsi_platdata {
+	unsigned long base;
+	unsigned long max_lun;
+	unsigned long max_id;
+};
 
-void scsi_print_error(ccb *pccb);
-int scsi_exec(ccb *pccb);
-void scsi_bus_reset(void);
+/* Operations for SCSI */
+struct scsi_ops {
+	/**
+	 * exec() - execute a command
+	 *
+	 * @dev:	SCSI bus
+	 * @cmd:	Command to execute
+	 * @return 0 if OK, -ve on error
+	 */
+	int (*exec)(struct udevice *dev, struct scsi_cmd *cmd);
+
+	/**
+	 * bus_reset() - reset the bus
+	 *
+	 * @dev:	SCSI bus to reset
+	 * @return 0 if OK, -ve on error
+	 */
+	int (*bus_reset)(struct udevice *dev);
+};
+
+#define scsi_get_ops(dev)        ((struct scsi_ops *)(dev)->driver->ops)
+
+extern struct scsi_ops scsi_ops;
+
+/**
+ * scsi_exec() - execute a command
+ *
+ * @dev:	SCSI bus
+ * @cmd:	Command to execute
+ * @return 0 if OK, -ve on error
+ */
+int scsi_exec(struct udevice *dev, struct scsi_cmd *cmd);
+
+/**
+ * scsi_bus_reset() - reset the bus
+ *
+ * @dev:	SCSI bus to reset
+ * @return 0 if OK, -ve on error
+ */
+int scsi_bus_reset(struct udevice *dev);
+
+/**
+ * scsi_scan() - Scan all SCSI controllers for available devices
+ *
+ * @vebose: true to show information about each device found
+ */
+int scsi_scan(bool verbose);
+
+/**
+ * scsi_scan_dev() - scan a SCSI bus and create devices
+ *
+ * @dev:	SCSI bus
+ * @verbose:	true to show information about each device found
+ */
+int scsi_scan_dev(struct udevice *dev, bool verbose);
+
+#ifndef CONFIG_DM_SCSI
 void scsi_low_level_init(int busdevfunc);
-
-
-/***************************************************************************
- * functions residing inside cmd_scsi.c
- */
 void scsi_init(void);
-void scsi_scan(int mode);
-
-/** @return the number of scsi disks */
-int scsi_get_disk_count(void);
+#endif
 
 #define SCSI_IDENTIFY					0xC0  /* not used */
 

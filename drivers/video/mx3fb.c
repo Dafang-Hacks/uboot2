@@ -1,26 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2009
  * Guennadi Liakhovetski, DENX Software Engineering, <lg@denx.de>
  * Copyright (C) 2011
  * HALE electronic GmbH, <helmut.raiger@hale.at>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 #include <common.h>
 #include <malloc.h>
@@ -28,7 +11,7 @@
 
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 
 #include "videomodes.h"
@@ -359,8 +342,6 @@ union chan_param_mem {
 	struct chan_param_mem_planar		pp;
 	struct chan_param_mem_interleaved	ip;
 };
-
-DECLARE_GLOBAL_DATA_PTR;
 
 /* graphics setup */
 static GraphicDevice panel;
@@ -832,7 +813,7 @@ void *video_hw_init(void)
 
 	videomode = CONFIG_SYS_DEFAULT_VIDEO_MODE;
 	/* get video mode via environment */
-	penv = getenv("videomode");
+	penv = env_get("videomode");
 	if (penv) {
 		/* decide if it is a string */
 		if (penv[0] <= '9') {
@@ -919,13 +900,4 @@ void *video_hw_init(void)
 			__func__, panel.frameAdrs, memsize);
 
 	return (void *) &panel;
-}
-
-void video_set_lut(unsigned int index,	/* color number */
-		    unsigned char r,	/* red */
-		    unsigned char g,	/* green */
-		    unsigned char b	/* blue */
-		    )
-{
-	return;
 }

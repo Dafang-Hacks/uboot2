@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  *  linux/include/asm-nds/io.h
  *
@@ -6,10 +7,6 @@
  * Copyright (C) 2011 Andes Technology Corporation
  * Shawn Lin, Andes Technology Corporation <nobuhiro@andestech.com>
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
  *
  * Modifications:
  *  16-Sep-1996	RMK	Inlined the inx/outx functions & optimised for both
@@ -40,34 +37,26 @@ static inline void sync(void)
 {
 }
 
-/*
- * Given a physical address and a length, return a virtual address
- * that can be used to access the memory range with the caching
- * properties specified by "flags".
- */
-#define MAP_NOCACHE	(0)
-#define MAP_WRCOMBINE	(0)
-#define MAP_WRBACK	(0)
-#define MAP_WRTHROUGH	(0)
-
-static inline void *
-map_physmem(phys_addr_t paddr, unsigned long len, unsigned long flags)
+#ifdef CONFIG_ARCH_MAP_SYSMEM
+static inline void *map_sysmem(phys_addr_t paddr, unsigned long len)
 {
-	return (void *)paddr;
+	if(paddr <PHYS_SDRAM_0_SIZE + PHYS_SDRAM_1_SIZE)
+	paddr = paddr | 0x40000000;
+	return (void *)(uintptr_t)paddr;
 }
 
-/*
- * Take down a mapping set up by map_physmem().
- */
-static inline void unmap_physmem(void *vaddr, unsigned long flags)
+static inline void *unmap_sysmem(const void *vaddr)
 {
-
+	phys_addr_t paddr = (phys_addr_t)vaddr;
+	paddr = paddr & ~0x40000000;
+	return (void *)(uintptr_t)paddr;
 }
 
-static inline phys_addr_t virt_to_phys(void *vaddr)
+static inline phys_addr_t map_to_sysmem(const void *ptr)
 {
-	return (phys_addr_t)(vaddr);
+	return (phys_addr_t)(uintptr_t)ptr;
 }
+#endif
 
 /*
  * Generic virtual read/write.  Note that we don't support half-word
@@ -106,26 +95,26 @@ extern void __raw_readsl(unsigned int addr, void *data, int longlen);
 #define __iormb()	dmb()
 #define __iowmb()	dmb()
 
-static inline void writeb(unsigned char val, unsigned char *addr)
+static inline void writeb(u8 val, volatile void __iomem *addr)
 {
 	__iowmb();
 	__arch_putb(val, addr);
 }
 
-static inline void writew(unsigned short val, unsigned short *addr)
+static inline void writew(u16 val, volatile void __iomem *addr)
 {
 	__iowmb();
 	__arch_putw(val, addr);
 
 }
 
-static inline void writel(unsigned int val, unsigned int *addr)
+static inline void writel(u32 val, volatile void __iomem *addr)
 {
 	__iowmb();
 	__arch_putl(val, addr);
 }
 
-static inline unsigned char readb(unsigned char *addr)
+static inline u8 readb(const volatile void __iomem *addr)
 {
 	u8	val;
 
@@ -134,7 +123,7 @@ static inline unsigned char readb(unsigned char *addr)
 	return val;
 }
 
-static inline unsigned short readw(unsigned short *addr)
+static inline u16 readw(const volatile void __iomem *addr)
 {
 	u16	val;
 
@@ -143,7 +132,7 @@ static inline unsigned short readw(unsigned short *addr)
 	return val;
 }
 
-static inline unsigned int readl(unsigned int *addr)
+static inline u32 readl(const volatile void __iomem *addr)
 {
 	u32	val;
 
@@ -182,6 +171,43 @@ static inline unsigned int readl(unsigned int *addr)
 
 #define out_8(a, v)			__raw_writeb(v, a)
 #define in_8(a)				__raw_readb(a)
+
+/*
+ * Clear and set bits in one shot. These macros can be used to clear and
+ * set multiple bits in a register using a single call. These macros can
+ * also be used to set a multiple-bit bit pattern using a mask, by
+ * specifying the mask in the 'clear' parameter and the new bit pattern
+ * in the 'set' parameter.
+ */
+
+#define clrbits(type, addr, clear) \
+	out_##type((addr), in_##type(addr) & ~(clear))
+
+#define setbits(type, addr, set) \
+	out_##type((addr), in_##type(addr) | (set))
+
+#define clrsetbits(type, addr, clear, set) \
+	out_##type((addr), (in_##type(addr) & ~(clear)) | (set))
+
+#define clrbits_be32(addr, clear) clrbits(be32, addr, clear)
+#define setbits_be32(addr, set) setbits(be32, addr, set)
+#define clrsetbits_be32(addr, clear, set) clrsetbits(be32, addr, clear, set)
+
+#define clrbits_le32(addr, clear) clrbits(le32, addr, clear)
+#define setbits_le32(addr, set) setbits(le32, addr, set)
+#define clrsetbits_le32(addr, clear, set) clrsetbits(le32, addr, clear, set)
+
+#define clrbits_be16(addr, clear) clrbits(be16, addr, clear)
+#define setbits_be16(addr, set) setbits(be16, addr, set)
+#define clrsetbits_be16(addr, clear, set) clrsetbits(be16, addr, clear, set)
+
+#define clrbits_le16(addr, clear) clrbits(le16, addr, clear)
+#define setbits_le16(addr, set) setbits(le16, addr, set)
+#define clrsetbits_le16(addr, clear, set) clrsetbits(le16, addr, clear, set)
+
+#define clrbits_8(addr, clear) clrbits(8, addr, clear)
+#define setbits_8(addr, set) setbits(8, addr, set)
+#define clrsetbits_8(addr, clear, set) clrsetbits(8, addr, clear, set)
 
 /*
  * Now, pick up the machine-defined IO definitions
@@ -309,40 +335,6 @@ static inline void writesl(unsigned int *addr, const void * data, int longlen)
 #define insl_p(port, to, len)		insl(port, to, len)
 
 /*
- * ioremap and friends.
- *
- * ioremap takes a PCI memory address, as specified in
- * linux/Documentation/IO-mapping.txt.  If you want a
- * physical address, use __ioremap instead.
- */
-extern void *__ioremap(unsigned long offset, size_t size, unsigned long flags);
-extern void __iounmap(void *addr);
-
-/*
- * Generic ioremap support.
- *
- * Define:
- *  iomem_valid_addr(off,size)
- *  iomem_to_phys(off)
- */
-#ifdef iomem_valid_addr
-#define __arch_ioremap(off, sz, nocache)				\
-({									\
-	unsigned long _off = (off), _size = (sz);			\
-	void *_ret = (void *)0;						\
-	if (iomem_valid_addr(_off, _size))				\
-		_ret = __ioremap(iomem_to_phys(_off), _size, 0);	\
-	_ret;								\
-})
-
-#define __arch_iounmap __iounmap
-#endif
-
-#define ioremap(off, sz)		__arch_ioremap((off), (sz), 0)
-#define ioremap_nocache(off, sz)	__arch_ioremap((off), (sz), 1)
-#define iounmap(_addr)			__arch_iounmap(_addr)
-
-/*
  * DMA-consistent mapping functions.  These allocate/free a region of
  * uncached, unwrite-buffered mapped memory space for use with DMA
  * devices.  This is the "generic" version.  The PCI specific version
@@ -458,5 +450,8 @@ out:
 #define isa_check_signature(io, sig, len)	(0)
 
 #endif	/* __mem_isa */
+
+#include <asm-generic/io.h>
+
 #endif	/* __KERNEL__ */
 #endif	/* __ASM_NDS_IO_H */

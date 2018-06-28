@@ -1,21 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2003
  * Gerry Hamel, geh@ti.com, Texas Instruments
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307	 USA
- *
  */
 
 #include <common.h>
@@ -54,10 +40,12 @@ int buf_free (circbuf_t * buf)
 int buf_pop (circbuf_t * buf, char *dest, unsigned int len)
 {
 	unsigned int i;
-	char *p = buf->top;
+	char *p;
 
 	assert (buf != NULL);
 	assert (dest != NULL);
+
+	p = buf->top;
 
 	/* Cap to number of bytes in buffer */
 	if (len > buf->size)
@@ -82,10 +70,12 @@ int buf_push (circbuf_t * buf, const char *src, unsigned int len)
 {
 	/* NOTE:  this function allows push to overwrite old data. */
 	unsigned int i;
-	char *p = buf->tail;
+	char *p;
 
 	assert (buf != NULL);
 	assert (src != NULL);
+
+	p = buf->tail;
 
 	for (i = 0; i < len; i++) {
 		*p++ = src[i];

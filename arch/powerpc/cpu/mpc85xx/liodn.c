@@ -1,27 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2008-2011 Freescale Semiconductor, Inc.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 
 #include <asm/immap_85xx.h>
@@ -73,6 +56,23 @@ static void set_liodn(struct liodn_id_table *tbl, int size)
 	}
 }
 
+#ifdef CONFIG_SYS_DPAA_FMAN
+static void set_fman_liodn(struct fman_liodn_id_table *tbl, int size)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		u32 liodn;
+		if (tbl[i].num_ids == 2)
+			liodn = (tbl[i].id[0] << 16) | tbl[i].id[1];
+		else
+			liodn = tbl[i].id[0];
+
+		out_be32((volatile u32 *)(tbl[i].reg_offset), liodn);
+	}
+}
+#endif
+
 static void setup_sec_liodn_base(void)
 {
 	ccsr_sec_t *sec = (void *)CONFIG_SYS_FSL_SEC_ADDR;
@@ -82,17 +82,17 @@ static void setup_sec_liodn_base(void)
 		return;
 
 	/* QILCR[QSLOM] */
-	out_be32(&sec->qilcr_ms, 0x3ff<<16);
+	sec_out32(&sec->qilcr_ms, 0x3ff<<16);
 
 	base = (liodn_bases[FSL_HW_PORTAL_SEC].id[0] << 16) |
 		liodn_bases[FSL_HW_PORTAL_SEC].id[1];
 
-	out_be32(&sec->qilcr_ls, base);
+	sec_out32(&sec->qilcr_ls, base);
 }
 
 #ifdef CONFIG_SYS_DPAA_FMAN
 static void setup_fman_liodn_base(enum fsl_dpaa_dev dev,
-				  struct liodn_id_table *tbl, int size)
+				  struct fman_liodn_id_table *tbl, int size)
 {
 	int i;
 	ccsr_fman_t *fm;
@@ -196,12 +196,12 @@ void set_liodns(void)
 
 	/* setup FMAN block(s) liodn bases & offsets if we have one */
 #ifdef CONFIG_SYS_DPAA_FMAN
-	set_liodn(fman1_liodn_tbl, fman1_liodn_tbl_sz);
+	set_fman_liodn(fman1_liodn_tbl, fman1_liodn_tbl_sz);
 	setup_fman_liodn_base(FSL_HW_PORTAL_FMAN1, fman1_liodn_tbl,
 				fman1_liodn_tbl_sz);
 
 #if (CONFIG_SYS_NUM_FMAN == 2)
-	set_liodn(fman2_liodn_tbl, fman2_liodn_tbl_sz);
+	set_fman_liodn(fman2_liodn_tbl, fman2_liodn_tbl_sz);
 	setup_fman_liodn_base(FSL_HW_PORTAL_FMAN2, fman2_liodn_tbl,
 				fman2_liodn_tbl_sz);
 #endif
@@ -255,9 +255,9 @@ static void fdt_fixup_srio_liodn(void *blob, struct srio_liodn_id_table *tbl)
 #endif
 
 #define CONFIG_SYS_MAX_PCI_EPS		8
-#define CONFIG_SYS_PCI_EP_LIODN_START	256
 
-static void fdt_fixup_pci_liodn_offsets(void *fdt, const char *compat)
+static void fdt_fixup_pci_liodn_offsets(void *fdt, const char *compat,
+					int ep_liodn_start)
 {
 	int off, pci_idx = 0, pci_cnt = 0, i, rc;
 	const uint32_t *base_liodn;
@@ -287,7 +287,7 @@ static void fdt_fixup_pci_liodn_offsets(void *fdt, const char *compat)
 			continue;
 		}
 		for (i = 0; i < CONFIG_SYS_MAX_PCI_EPS; i++)
-			liodn_offs[i + 1] = CONFIG_SYS_PCI_EP_LIODN_START +
+			liodn_offs[i + 1] = ep_liodn_start +
 					i * pci_cnt + pci_idx - *base_liodn;
 		rc = fdt_setprop(fdt, off, "fsl,liodn-offset-list",
 				 liodn_offs, sizeof(liodn_offs));
@@ -331,6 +331,43 @@ static void fdt_fixup_liodn_tbl(void *blob, struct liodn_id_table *tbl, int sz)
 	}
 }
 
+#ifdef CONFIG_SYS_DPAA_FMAN
+static void fdt_fixup_liodn_tbl_fman(void *blob,
+				     struct fman_liodn_id_table *tbl,
+				     int sz)
+{
+	int i;
+
+	for (i = 0; i < sz; i++) {
+		int off;
+
+		if (tbl[i].compat == NULL)
+			continue;
+
+		/* Try the new compatible first.
+		 * If the node is missing, try the old.
+		 */
+		off = fdt_node_offset_by_compat_reg(blob,
+				tbl[i].compat[0], tbl[i].compat_offset);
+		if (off < 0)
+			off = fdt_node_offset_by_compat_reg(blob,
+					tbl[i].compat[1], tbl[i].compat_offset);
+
+		if (off >= 0) {
+			off = fdt_setprop(blob, off, "fsl,liodn",
+				&tbl[i].id[0],
+				sizeof(u32) * tbl[i].num_ids);
+			if (off > 0)
+				printf("WARNING unable to set fsl,liodn for FMan Port: %s\n",
+				       fdt_strerror(off));
+		} else {
+			debug("WARNING: could not set fsl,liodn for FMan Portport: %s.\n",
+			      fdt_strerror(off));
+		}
+	}
+}
+#endif
+
 void fdt_fixup_liodn(void *blob)
 {
 #ifdef CONFIG_SYS_SRIO
@@ -339,9 +376,9 @@ void fdt_fixup_liodn(void *blob)
 
 	fdt_fixup_liodn_tbl(blob, liodn_tbl, liodn_tbl_sz);
 #ifdef CONFIG_SYS_DPAA_FMAN
-	fdt_fixup_liodn_tbl(blob, fman1_liodn_tbl, fman1_liodn_tbl_sz);
+	fdt_fixup_liodn_tbl_fman(blob, fman1_liodn_tbl, fman1_liodn_tbl_sz);
 #if (CONFIG_SYS_NUM_FMAN == 2)
-	fdt_fixup_liodn_tbl(blob, fman2_liodn_tbl, fman2_liodn_tbl_sz);
+	fdt_fixup_liodn_tbl_fman(blob, fman2_liodn_tbl, fman2_liodn_tbl_sz);
 #endif
 #endif
 	fdt_fixup_liodn_tbl(blob, sec_liodn_tbl, sec_liodn_tbl_sz);
@@ -354,5 +391,22 @@ void fdt_fixup_liodn(void *blob)
 	fdt_fixup_liodn_tbl(blob, rman_liodn_tbl, rman_liodn_tbl_sz);
 #endif
 
-	fdt_fixup_pci_liodn_offsets(blob, "fsl,qoriq-pcie-v2.4");
+	ccsr_pcix_t *pcix = (ccsr_pcix_t *)CONFIG_SYS_PCIE1_ADDR;
+	int pci_ver = pcix->ipver1 & 0xffff, liodn_base = 0;
+
+	if (pci_ver >= 0x0204) {
+		if (pci_ver >= 0x0300)
+			liodn_base = 1024;
+		else
+			liodn_base = 256;
+	}
+
+	if (liodn_base) {
+		char compat[32];
+
+		sprintf(compat, "fsl,qoriq-pcie-v%d.%d",
+			(pci_ver & 0xff00) >> 8, pci_ver & 0xff);
+		fdt_fixup_pci_liodn_offsets(blob, compat, liodn_base);
+		fdt_fixup_pci_liodn_offsets(blob, "fsl,qoriq-pcie", liodn_base);
+	}
 }

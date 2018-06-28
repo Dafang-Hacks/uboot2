@@ -1,25 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Andes Technology Corporation
  * Shawn Lin, Andes Technology Corporation <nobuhiro@andestech.com>
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #ifndef _ASM_CACHE_H
@@ -32,6 +15,7 @@ void	icache_disable(void);
 int	dcache_status(void);
 void	dcache_enable(void);
 void	dcache_disable(void);
+void cache_flush(void);
 
 #define DEFINE_GET_SYS_REG(reg) \
 	static inline unsigned long GET_##reg(void)		\
@@ -46,10 +30,24 @@ void	dcache_disable(void);
 enum cache_t {ICACHE, DCACHE};
 DEFINE_GET_SYS_REG(ICM_CFG);
 DEFINE_GET_SYS_REG(DCM_CFG);
-#define ICM_CFG_OFF_ISZ	6	/* I-cache line size */
-#define ICM_CFG_MSK_ISZ	(0x7UL << ICM_CFG_OFF_ISZ)
-#define DCM_CFG_OFF_DSZ	6	/* D-cache line size */
-#define DCM_CFG_MSK_DSZ	(0x7UL << DCM_CFG_OFF_DSZ)
+/* I-cache sets (# of cache lines) per way */
+#define ICM_CFG_OFF_ISET	0
+/* I-cache ways */
+#define ICM_CFG_OFF_IWAY	3
+#define ICM_CFG_MSK_ISET	(0x7 << ICM_CFG_OFF_ISET)
+#define ICM_CFG_MSK_IWAY	(0x7 << ICM_CFG_OFF_IWAY)
+/* D-cache sets (# of cache lines) per way */
+#define DCM_CFG_OFF_DSET	0
+/* D-cache ways */
+#define DCM_CFG_OFF_DWAY	3
+#define DCM_CFG_MSK_DSET	(0x7 << DCM_CFG_OFF_DSET)
+#define DCM_CFG_MSK_DWAY	(0x7 << DCM_CFG_OFF_DWAY)
+/* I-cache line size */
+#define ICM_CFG_OFF_ISZ	6
+#define ICM_CFG_MSK_ISZ		(0x7UL << ICM_CFG_OFF_ISZ)
+/* D-cache line size */
+#define DCM_CFG_OFF_DSZ	6
+#define DCM_CFG_MSK_DSZ		(0x7UL << DCM_CFG_OFF_DSZ)
 
 /*
  * The current upper bound for NDS32 L1 data cache line sizes is 32 bytes.

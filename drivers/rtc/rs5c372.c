@@ -17,16 +17,6 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -257,35 +247,13 @@ int rtc_set (struct rtc_time *tmp)
 }
 
 /*
- * Reset the RTC. We set the date back to 1970-01-01.
+ * Reset the RTC.
  */
 void
 rtc_reset (void)
 {
-	struct rtc_time tmp;
-
 	if (!setup_done)
 		rs5c372_enable();
-
-	if (!setup_done)
-		return;
-
-	tmp.tm_year = 1970;
-	tmp.tm_mon = 1;
-	/* Jan. 1, 1970 was a Thursday */
-	tmp.tm_wday= 4;
-	tmp.tm_mday= 1;
-	tmp.tm_hour = 0;
-	tmp.tm_min = 0;
-	tmp.tm_sec = 0;
-
-	rtc_set(&tmp);
-
-	printf ("RTC:	%4d-%02d-%02d %2d:%02d:%02d UTC\n",
-		tmp.tm_year, tmp.tm_mon, tmp.tm_mday,
-		tmp.tm_hour, tmp.tm_min, tmp.tm_sec);
-
-	return;
 }
 
 #endif

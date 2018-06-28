@@ -1,29 +1,24 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * FIPS-180-2 compliant SHA-256 implementation
  *
  * Copyright (C) 2001-2003  Christophe Devine
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #ifndef USE_HOSTCC
 #include <common.h>
+#include <linux/string.h>
+#else
+#include <string.h>
 #endif /* USE_HOSTCC */
 #include <watchdog.h>
-#include <linux/string.h>
-#include <sha256.h>
+#include <u-boot/sha256.h>
+
+const uint8_t sha256_der_prefix[SHA256_DER_LEN] = {
+	0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86,
+	0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05,
+	0x00, 0x04, 0x20
+};
 
 /*
  * 32-bit integer manipulation macros (big endian)
@@ -270,14 +265,15 @@ void sha256_csum_wd(const unsigned char *input, unsigned int ilen,
 {
 	sha256_context ctx;
 #if defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG)
-	unsigned char *end, *curr;
+	const unsigned char *end;
+	unsigned char *curr;
 	int chunk;
 #endif
 
 	sha256_starts(&ctx);
 
 #if defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG)
-	curr = input;
+	curr = (unsigned char *)input;
 	end = input + ilen;
 	while (curr < end) {
 		chunk = end - curr;

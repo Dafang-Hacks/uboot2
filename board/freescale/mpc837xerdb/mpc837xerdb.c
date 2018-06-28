@@ -1,15 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2007 Freescale Semiconductor, Inc.
  * Kevin Lam <kevin.lam@freescale.com>
  * Joe D'Abbraccio <joe.d'abbraccio@freescale.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
  */
 
 #include <common.h>
@@ -21,6 +14,8 @@
 #include <spd_sdram.h>
 #include <vsc7385.h>
 #include <fsl_esdhc.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 #if defined(CONFIG_SYS_DRAM_TEST)
 int
@@ -66,13 +61,13 @@ void ddr_enable_ecc(unsigned int dram_size);
 #endif
 int fixed_sdram(void);
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	immap_t *im = (immap_t *) CONFIG_SYS_IMMR;
 	u32 msize = 0;
 
 	if ((im->sysconf.immrbar & IMMRBAR_BASE_ADDR) != (u32) im)
-		return -1;
+		return -ENXIO;
 
 #if defined(CONFIG_SPD_EEPROM)
 	msize = spd_sdram();
@@ -85,7 +80,9 @@ phys_size_t initdram(int board_type)
 	ddr_enable_ecc(msize * 1024 * 1024);
 #endif
 	/* return total bus DDR size(bytes) */
-	return (msize * 1024 * 1024);
+	gd->ram_size = msize * 1024 * 1024;
+
+	return 0;
 }
 
 #if !defined(CONFIG_SPD_EEPROM)
@@ -172,8 +169,13 @@ int board_early_init_f(void)
 int board_mmc_init(bd_t *bd)
 {
 	struct immap __iomem *im = (struct immap __iomem *)CONFIG_SYS_IMMR;
+	char buffer[HWCONFIG_BUFFER_SIZE] = {0};
+	int esdhc_hwconfig_enabled = 0;
 
-	if (!hwconfig("esdhc"))
+	if (env_get_f("hwconfig", buffer, sizeof(buffer)) > 0)
+		esdhc_hwconfig_enabled = hwconfig_f("esdhc", buffer);
+
+	if (esdhc_hwconfig_enabled == 0)
 		return 0;
 
 	clrsetbits_be32(&im->sysconf.sicrl, SICRL_USB_B, SICRL_USB_B_SD);
@@ -205,13 +207,15 @@ int misc_init_r(void)
 
 #if defined(CONFIG_OF_BOARD_SETUP)
 
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
 	ft_cpu_setup(blob, bd);
-	fdt_fixup_dr_usb(blob, bd);
+	fsl_fdt_fixup_dr_usb(blob, bd);
 	fdt_fixup_esdhc(blob, bd);
+
+	return 0;
 }
 #endif /* CONFIG_OF_BOARD_SETUP */

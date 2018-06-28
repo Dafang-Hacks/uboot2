@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2006 Freescale Semiconductor, Inc.
  *                    Dave Liu <daveliu@freescale.com>
@@ -10,11 +11,6 @@
  *
  * (C) Copyright 2008 - 2010
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
  */
 
 #include <common.h>
@@ -26,10 +22,14 @@
 #include <asm/mmu.h>
 #include <asm/processor.h>
 #include <pci.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <post.h>
 
 #include "../common/common.h"
+
+DECLARE_GLOBAL_DATA_PTR;
+
+static uchar ivm_content[CONFIG_SYS_IVM_EEPROM_MAX_LEN];
 
 const qe_iop_conf_t qe_iop_conf_tab[] = {
 	/* port pin dir open_drain assign */
@@ -94,19 +94,6 @@ const qe_iop_conf_t qe_iop_conf_tab[] = {
 	/* END of table */
 	{0,  0, 0, 0, QE_IOP_TAB_END},
 };
-
-static int board_init_i2c_busses(void)
-{
-	I2C_MUX_DEVICE *dev = NULL;
-	uchar *dtt_bus = (uchar *)"pca9547:70:a";
-
-	/* Set up the Bus for the DTTs */
-	dev = i2c_mux_ident_muxstring(dtt_bus);
-	if (dev == NULL)
-		printf("Error couldn't add Bus for DTT\n");
-
-	return 0;
-}
 
 #if defined(CONFIG_SUVD3)
 const uint upma_table[] = {
@@ -206,8 +193,7 @@ int board_early_init_r(void)
 
 int misc_init_r(void)
 {
-	/* add board specific i2c busses */
-	board_init_i2c_busses();
+	ivm_read_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
 	return 0;
 }
 
@@ -243,6 +229,11 @@ static struct mv88e_sw_reg extsw_conf[] = {
 	{ PORT(5), 0x1A, 0xADB1 },
 	/* port 6, unused, this port has no phy */
 	{ PORT(6), PORT_CTRL, PORT_DIS },
+	/*
+	 * Errata Fix: 1.9V Output from Internal 1.8V Regulator,
+	 * acc . MV-S300889-00D.pdf , clause 4.5
+	 */
+	{ PORT(5), 0x1A, 0xADB1 },
 };
 #endif
 
@@ -271,11 +262,11 @@ int last_stage_init(void)
 	mv88e_sw_reset(name, CONFIG_KM_MVEXTSW_ADDR);
 
 	if (piggy_present()) {
-		setenv("ethact", "UEC2");
-		setenv("netdev", "eth1");
+		env_set("ethact", "UEC2");
+		env_set("netdev", "eth1");
 		puts("using PIGGY for network boot\n");
 	} else {
-		setenv("netdev", "eth0");
+		env_set("netdev", "eth0");
 		puts("using frontport for network boot\n");
 	}
 #endif
@@ -288,14 +279,14 @@ int last_stage_init(void)
 	if (dip_switch != 0) {
 		/* start bootloader */
 		puts("DIP:   Enabled\n");
-		setenv("actual_bank", "0");
+		env_set("actual_bank", "0");
 	}
 #endif
 	set_km_env();
 	return 0;
 }
 
-int fixed_sdram(void)
+static int fixed_sdram(void)
 {
 	immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	u32 msize = 0;
@@ -338,13 +329,13 @@ int fixed_sdram(void)
 	return msize;
 }
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	u32 msize = 0;
 
 	if ((in_be32(&im->sysconf.immrbar) & IMMRBAR_BASE_ADDR) != (u32)im)
-		return -1;
+		return -ENXIO;
 
 	out_be32(&im->sysconf.ddrlaw[0].bar,
 		CONFIG_SYS_DDR_BASE & LAWBAR_BAR);
@@ -358,7 +349,9 @@ phys_size_t initdram(int board_type)
 #endif
 
 	/* return total bus SDRAM size(bytes)  -- DDR */
-	return msize * 1024 * 1024;
+	gd->ram_size = msize * 1024 * 1024;
+
+	return 0;
 }
 
 int checkboard(void)
@@ -371,17 +364,17 @@ int checkboard(void)
 	return 0;
 }
 
-#if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
+
+	return 0;
 }
-#endif
 
 #if defined(CONFIG_HUSH_INIT_VAR)
 int hush_init_var(void)
 {
-	ivm_read_eeprom();
+	ivm_analyze_eeprom(ivm_content, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
 	return 0;
 }
 #endif

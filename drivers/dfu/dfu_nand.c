@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * dfu_nand.c -- DFU for NAND routines.
  *
@@ -6,20 +7,6 @@
  * Based on dfu_mmc.c which is:
  * Copyright (C) 2012 Samsung Electronics
  * author: Lukasz Majewski <l.majewski@samsung.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include <common.h>
@@ -31,18 +18,13 @@
 #include <jffs2/load_kernel.h>
 #include <nand.h>
 
-enum dfu_nand_op {
-	DFU_OP_READ = 1,
-	DFU_OP_WRITE,
-};
-
-static int nand_block_op(enum dfu_nand_op op, struct dfu_entity *dfu,
+static int nand_block_op(enum dfu_op op, struct dfu_entity *dfu,
 			u64 offset, void *buf, long *len)
 {
 	loff_t start, lim;
 	size_t count, actual;
 	int ret;
-	nand_info_t *nand;
+	struct mtd_info *mtd;
 
 	/* if buf == NULL return total size of the area */
 	if (buf == NULL) {
@@ -54,18 +36,18 @@ static int nand_block_op(enum dfu_nand_op op, struct dfu_entity *dfu,
 	lim = dfu->data.nand.start + dfu->data.nand.size - start;
 	count = *len;
 
+	mtd = get_nand_dev_by_index(nand_curr_device);
+
 	if (nand_curr_device < 0 ||
 	    nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE ||
-	    !nand_info[nand_curr_device].name) {
+	    !mtd) {
 		printf("%s: invalid nand device\n", __func__);
 		return -1;
 	}
 
-	nand = &nand_info[nand_curr_device];
-
 	if (op == DFU_OP_READ) {
-		ret = nand_read_skip_bad(nand, start, &count, &actual,
-				lim, buf);
+		ret = nand_read_skip_bad(mtd, start, &count, &actual,
+					 lim, buf);
 	} else {
 		nand_erase_options_t opts;
 
@@ -76,12 +58,12 @@ static int nand_block_op(enum dfu_nand_op op, struct dfu_entity *dfu,
 		opts.quiet = 1;
 		opts.lim = lim;
 		/* first erase */
-		ret = nand_erase_opts(nand, &opts);
+		ret = nand_erase_opts(mtd, &opts);
 		if (ret)
 			return ret;
 		/* then write */
-		ret = nand_write_skip_bad(nand, start, &count, &actual,
-				lim, buf, 0);
+		ret = nand_write_skip_bad(mtd, start, &count, &actual,
+					  lim, buf, WITH_WR_VERIFY);
 	}
 
 	if (ret != 0) {
@@ -131,6 +113,13 @@ static int dfu_write_medium_nand(struct dfu_entity *dfu,
 	return ret;
 }
 
+int dfu_get_medium_size_nand(struct dfu_entity *dfu, u64 *size)
+{
+	*size = dfu->data.nand.size;
+
+	return 0;
+}
+
 static int dfu_read_medium_nand(struct dfu_entity *dfu, u64 offset, void *buf,
 		long *len)
 {
@@ -148,11 +137,63 @@ static int dfu_read_medium_nand(struct dfu_entity *dfu, u64 offset, void *buf,
 	return ret;
 }
 
-int dfu_fill_entity_nand(struct dfu_entity *dfu, char *s)
+static int dfu_flush_medium_nand(struct dfu_entity *dfu)
+{
+	int ret = 0;
+	u64 off;
+
+	/* in case of ubi partition, erase rest of the partition */
+	if (dfu->data.nand.ubi) {
+		struct mtd_info *mtd = get_nand_dev_by_index(nand_curr_device);
+		nand_erase_options_t opts;
+
+		if (nand_curr_device < 0 ||
+		    nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE ||
+		    !mtd) {
+			printf("%s: invalid nand device\n", __func__);
+			return -1;
+		}
+
+		memset(&opts, 0, sizeof(opts));
+		off = dfu->offset;
+		if ((off & (mtd->erasesize - 1)) != 0) {
+			/*
+			 * last write ended with unaligned length
+			 * sector is erased, jump to next
+			 */
+			off = off & ~((mtd->erasesize - 1));
+			off += mtd->erasesize;
+		}
+		opts.offset = dfu->data.nand.start + off +
+				dfu->bad_skip;
+		opts.length = dfu->data.nand.start +
+				dfu->data.nand.size - opts.offset;
+		ret = nand_erase_opts(mtd, &opts);
+		if (ret != 0)
+			printf("Failure erase: %d\n", ret);
+	}
+
+	return ret;
+}
+
+unsigned int dfu_polltimeout_nand(struct dfu_entity *dfu)
+{
+	/*
+	 * Currently, Poll Timeout != 0 is only needed on nand
+	 * ubi partition, as the not used sectors need an erase
+	 */
+	if (dfu->data.nand.ubi)
+		return DFU_MANIFEST_POLL_TIMEOUT;
+
+	return DFU_DEFAULT_POLL_TIMEOUT;
+}
+
+int dfu_fill_entity_nand(struct dfu_entity *dfu, char *devstr, char *s)
 {
 	char *st;
 	int ret, dev, part;
 
+	dfu->data.nand.ubi = 0;
 	dfu->dev_type = DFU_DEV_NAND;
 	st = strsep(&s, " ");
 	if (!strcmp(st, "raw")) {
@@ -160,7 +201,7 @@ int dfu_fill_entity_nand(struct dfu_entity *dfu, char *s)
 		dfu->data.nand.start = simple_strtoul(s, &s, 16);
 		s++;
 		dfu->data.nand.size = simple_strtoul(s, &s, 16);
-	} else if (!strcmp(st, "part")) {
+	} else if ((!strcmp(st, "part")) || (!strcmp(st, "partubi"))) {
 		char mtd_id[32];
 		struct mtd_device *mtd_dev;
 		u8 part_num;
@@ -185,14 +226,18 @@ int dfu_fill_entity_nand(struct dfu_entity *dfu, char *s)
 
 		dfu->data.nand.start = pi->offset;
 		dfu->data.nand.size = pi->size;
-
+		if (!strcmp(st, "partubi"))
+			dfu->data.nand.ubi = 1;
 	} else {
 		printf("%s: Memory layout (%s) not supported!\n", __func__, st);
 		return -1;
 	}
 
+	dfu->get_medium_size = dfu_get_medium_size_nand;
 	dfu->read_medium = dfu_read_medium_nand;
 	dfu->write_medium = dfu_write_medium_nand;
+	dfu->flush_medium = dfu_flush_medium_nand;
+	dfu->poll_timeout = dfu_polltimeout_nand;
 
 	/* initial state */
 	dfu->inited = 0;

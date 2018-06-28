@@ -1,25 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2006,2009-2010 Freescale Semiconductor, Inc.
  * Jeff Brown
  * Srikanth Srinivasan (srikanth.srinivasan@freescale.com)
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -29,6 +12,7 @@
 #include <asm/mmu.h>
 #include <mpc86xx.h>
 #include <asm/fsl_law.h>
+#include <asm/ppc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -88,30 +72,30 @@ checkcpu(void)
 	get_sys_info(&sysinfo);
 
 	puts("Clock Configuration:\n");
-	printf("       CPU:%-4s MHz, ", strmhz(buf1, sysinfo.freqProcessor));
-	printf("MPX:%-4s MHz\n", strmhz(buf1, sysinfo.freqSystemBus));
+	printf("       CPU:%-4s MHz, ", strmhz(buf1, sysinfo.freq_processor));
+	printf("MPX:%-4s MHz\n", strmhz(buf1, sysinfo.freq_systembus));
 	printf("       DDR:%-4s MHz (%s MT/s data rate), ",
-		strmhz(buf1, sysinfo.freqSystemBus / 2),
-		strmhz(buf2, sysinfo.freqSystemBus));
+		strmhz(buf1, sysinfo.freq_systembus / 2),
+		strmhz(buf2, sysinfo.freq_systembus));
 
-	if (sysinfo.freqLocalBus > LCRR_CLKDIV) {
-		printf("LBC:%-4s MHz\n", strmhz(buf1, sysinfo.freqLocalBus));
+	if (sysinfo.freq_localbus > LCRR_CLKDIV) {
+		printf("LBC:%-4s MHz\n", strmhz(buf1, sysinfo.freq_localbus));
 	} else {
 		printf("LBC: unknown (LCRR[CLKDIV] = 0x%02lx)\n",
-		       sysinfo.freqLocalBus);
+		       sysinfo.freq_localbus);
 	}
 
-	puts("L1:    D-cache 32 KB enabled\n");
-	puts("       I-cache 32 KB enabled\n");
+	puts("L1:    D-cache 32 KiB enabled\n");
+	puts("       I-cache 32 KiB enabled\n");
 
 	puts("L2:    ");
 	if (get_l2cr() & 0x80000000) {
-#if defined(CONFIG_MPC8610)
+#if defined(CONFIG_ARCH_MPC8610)
 		puts("256");
-#elif defined(CONFIG_MPC8641)
+#elif defined(CONFIG_ARCH_MPC8641)
 		puts("512");
 #endif
-		puts(" KB enabled\n");
+		puts(" KiB enabled\n");
 	} else {
 		puts("Disabled\n");
 	}
@@ -147,7 +131,7 @@ get_tbclk(void)
 	sys_info_t sys_info;
 
 	get_sys_info(&sys_info);
-	return (sys_info.freqSystemBus + 3L) / 4L;
+	return (sys_info.freq_systembus + 3L) / 4L;
 }
 
 
@@ -155,7 +139,7 @@ get_tbclk(void)
 void
 watchdog_reset(void)
 {
-#if defined(CONFIG_MPC8610)
+#if defined(CONFIG_ARCH_MPC8610)
 	/*
 	 * This actually feed the hard enabled watchdog.
 	 */
@@ -176,7 +160,7 @@ watchdog_reset(void)
  * Print out the state of various machine registers.
  * Currently prints out LAWs, BR0/OR0, and BATs
  */
-void mpc86xx_reginfo(void)
+void print_reginfo(void)
 {
 	print_bats();
 	print_laws();

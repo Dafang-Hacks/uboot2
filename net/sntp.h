@@ -1,10 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Masami Komiya <mkomiya@sonare.it> 2005
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2, or (at
- * your option) any later version.
  */
 
 #ifndef __SNTP_H__
@@ -54,8 +50,8 @@ struct sntp_pkt_t {
 	unsigned long long originate_timestamp;
 	unsigned long long receive_timestamp;
 	unsigned long long transmit_timestamp;
-};
+} __attribute__((packed));
 
-extern void SntpStart(void);	/* Begin SNTP */
+void sntp_start(void);	/* Begin SNTP */
 
 #endif /* __SNTP_H__ */

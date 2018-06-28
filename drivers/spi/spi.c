@@ -1,38 +1,39 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but without any warranty; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
+#include <fdtdec.h>
 #include <malloc.h>
 #include <spi.h>
+
+int spi_set_wordlen(struct spi_slave *slave, unsigned int wordlen)
+{
+	if (wordlen == 0 || wordlen > 32) {
+		printf("spi: invalid wordlen %u\n", wordlen);
+		return -1;
+	}
+
+	slave->wordlen = wordlen;
+
+	return 0;
+}
 
 void *spi_do_alloc_slave(int offset, int size, unsigned int bus,
 			 unsigned int cs)
 {
-	struct spi_slave *slave;
-	void *ptr;
+	u8 *ptr;
 
 	ptr = malloc(size);
 	if (ptr) {
+		struct spi_slave *slave;
+
 		memset(ptr, '\0', size);
 		slave = (struct spi_slave *)(ptr + offset);
 		slave->bus = bus;
 		slave->cs = cs;
+		slave->wordlen = SPI_DEFAULT_WORDLEN;
 	}
 
 	return ptr;

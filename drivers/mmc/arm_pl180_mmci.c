@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * ARM PrimeCell MultiMedia Card Interface - PL180
  *
@@ -6,31 +7,31 @@
  * Author: Ulf Hansson <ulf.hansson@stericsson.com>
  * Author: Martin Lundholm <martin.xa.lundholm@stericsson.com>
  * Ported to drivers/mmc/ by: Matt Waddel <matt.waddel@linaro.org>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 /* #define DEBUG */
 
-#include <asm/io.h>
 #include "common.h"
+#include <clk.h>
 #include <errno.h>
-#include <mmc.h>
-#include "arm_pl180_mmci.h"
 #include <malloc.h>
+#include <mmc.h>
+
+#include <asm/io.h>
+#include <asm-generic/gpio.h>
+
+#include "arm_pl180_mmci.h"
+
+#ifdef CONFIG_DM_MMC
+#include <dm.h>
+#define MMC_CLOCK_MAX	48000000
+#define MMC_CLOCK_MIN	400000
+
+struct arm_pl180_mmc_plat {
+	struct mmc_config cfg;
+	struct mmc mmc;
+};
+#endif
 
 static int wait_for_command_end(struct mmc *dev, struct mmc_cmd *cmd)
 {
@@ -50,7 +51,7 @@ static int wait_for_command_end(struct mmc *dev, struct mmc_cmd *cmd)
 	writel(statusmask, &host->base->status_clear);
 	if (hoststatus & SDI_STA_CTIMEOUT) {
 		debug("CMD%d time out\n", cmd->cmdidx);
-		return TIMEOUT;
+		return -ETIMEDOUT;
 	} else if ((hoststatus & SDI_STA_CCRCFAIL) &&
 		   (cmd->resp_type & MMC_RSP_CRC)) {
 		printf("CMD%d CRC error\n", cmd->cmdidx);
@@ -278,17 +279,7 @@ static int host_request(struct mmc *dev,
 	return result;
 }
 
-/* MMC uses open drain drivers in the enumeration phase */
-static int mmc_host_reset(struct mmc *dev)
-{
-	struct pl180_mmc_host *host = dev->priv;
-
-	writel(host->pwr_init, &host->base->power);
-
-	return 0;
-}
-
-static void host_set_ios(struct mmc *dev)
+static int  host_set_ios(struct mmc *dev)
 {
 	struct pl180_mmc_host *host = dev->priv;
 	u32 sdi_clkcr;
@@ -300,9 +291,9 @@ static void host_set_ios(struct mmc *dev)
 		u32 clkdiv = 0;
 		u32 tmp_clock;
 
-		if (dev->clock >= dev->f_max) {
+		if (dev->clock >= dev->cfg->f_max) {
 			clkdiv = 0;
-			dev->clock = dev->f_max;
+			dev->clock = dev->cfg->f_max;
 		} else {
 			clkdiv = (host->clock_in / dev->clock) - 2;
 		}
@@ -346,24 +337,36 @@ static void host_set_ios(struct mmc *dev)
 
 	writel(sdi_clkcr, &host->base->clock);
 	udelay(CLK_CHANGE_DELAY);
+
+	return 0;
 }
+
+#ifndef CONFIG_DM_MMC
+/* MMC uses open drain drivers in the enumeration phase */
+static int mmc_host_reset(struct mmc *dev)
+{
+	struct pl180_mmc_host *host = dev->priv;
+
+	writel(host->pwr_init, &host->base->power);
+
+	return 0;
+}
+
+static const struct mmc_ops arm_pl180_mmci_ops = {
+	.send_cmd = host_request,
+	.set_ios = host_set_ios,
+	.init = mmc_host_reset,
+};
+#endif
 
 /*
  * mmc_host_init - initialize the mmc controller.
  * Set initial clock and power for mmc slot.
  * Initialize mmc struct and register with mmc framework.
  */
-int arm_pl180_mmci_init(struct pl180_mmc_host *host)
+int arm_pl180_mmci_init(struct pl180_mmc_host *host, struct mmc **mmc)
 {
-	struct mmc *dev;
 	u32 sdi_u32;
-
-	dev = malloc(sizeof(struct mmc));
-	if (!dev)
-		return -ENOMEM;
-
-	memset(dev, 0, sizeof(struct mmc));
-	dev->priv = host;
 
 	writel(host->pwr_init, &host->base->power);
 	writel(host->clkdiv_init, &host->base->clock);
@@ -372,19 +375,159 @@ int arm_pl180_mmci_init(struct pl180_mmc_host *host)
 	/* Disable mmc interrupts */
 	sdi_u32 = readl(&host->base->mask0) & ~SDI_MASK0_MASK;
 	writel(sdi_u32, &host->base->mask0);
-	strncpy(dev->name, host->name, sizeof(dev->name));
-	dev->send_cmd = host_request;
-	dev->set_ios = host_set_ios;
-	dev->init = mmc_host_reset;
-	dev->getcd = NULL;
-	dev->getwp = NULL;
-	dev->host_caps = host->caps;
-	dev->voltages = host->voltages;
-	dev->f_min = host->clock_min;
-	dev->f_max = host->clock_max;
-	dev->b_max = host->b_max;
-	mmc_register(dev);
-	debug("registered mmc interface number is:%d\n", dev->block_dev.dev);
+
+	host->cfg.name = host->name;
+#ifndef CONFIG_DM_MMC
+	host->cfg.ops = &arm_pl180_mmci_ops;
+#endif
+	/* TODO remove the duplicates */
+	host->cfg.host_caps = host->caps;
+	host->cfg.voltages = host->voltages;
+	host->cfg.f_min = host->clock_min;
+	host->cfg.f_max = host->clock_max;
+	if (host->b_max != 0)
+		host->cfg.b_max = host->b_max;
+	else
+		host->cfg.b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
+
+	*mmc = mmc_create(&host->cfg, host);
+	if (!*mmc)
+		return -1;
+
+	debug("registered mmc interface number is:%d\n",
+	      (*mmc)->block_dev.devnum);
 
 	return 0;
 }
+
+#ifdef CONFIG_DM_MMC
+static int arm_pl180_mmc_probe(struct udevice *dev)
+{
+	struct arm_pl180_mmc_plat *pdata = dev_get_platdata(dev);
+	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
+	struct mmc *mmc = &pdata->mmc;
+	struct pl180_mmc_host *host = mmc->priv;
+	struct clk clk;
+	u32 bus_width;
+	int ret;
+
+	ret = clk_get_by_index(dev, 0, &clk);
+	if (ret < 0)
+		return ret;
+
+	ret = clk_enable(&clk);
+	if (ret) {
+		dev_err(dev, "failed to enable clock\n");
+		return ret;
+	}
+
+	strcpy(host->name, "MMC");
+	host->pwr_init = INIT_PWR;
+	host->clkdiv_init = SDI_CLKCR_CLKDIV_INIT_V1 | SDI_CLKCR_CLKEN |
+			    SDI_CLKCR_HWFC_EN;
+	host->voltages = VOLTAGE_WINDOW_SD;
+	host->caps = 0;
+	host->clock_in = clk_get_rate(&clk);
+	host->clock_min = host->clock_in / (2 * (SDI_CLKCR_CLKDIV_INIT_V1 + 1));
+	host->clock_max = dev_read_u32_default(dev, "max-frequency",
+					       MMC_CLOCK_MAX);
+	host->version2 = dev_get_driver_data(dev);
+
+	gpio_request_by_name(dev, "cd-gpios", 0, &host->cd_gpio, GPIOD_IS_IN);
+
+	bus_width = dev_read_u32_default(dev, "bus-width", 1);
+	switch (bus_width) {
+	case 8:
+		host->caps |= MMC_MODE_8BIT;
+		/* Hosts capable of 8-bit transfers can also do 4 bits */
+	case 4:
+		host->caps |= MMC_MODE_4BIT;
+		break;
+	case 1:
+		break;
+	default:
+		dev_err(dev, "Invalid bus-width value %u\n", bus_width);
+	}
+
+	ret = arm_pl180_mmci_init(host, &mmc);
+	if (ret) {
+		dev_err(dev, "arm_pl180_mmci init failed\n");
+		return ret;
+	}
+
+	mmc->dev = dev;
+	dev->priv = host;
+	upriv->mmc = mmc;
+
+	return 0;
+}
+
+static int dm_host_request(struct udevice *dev, struct mmc_cmd *cmd,
+			   struct mmc_data *data)
+{
+	struct mmc *mmc = mmc_get_mmc_dev(dev);
+
+	return host_request(mmc, cmd, data);
+}
+
+static int dm_host_set_ios(struct udevice *dev)
+{
+	struct mmc *mmc = mmc_get_mmc_dev(dev);
+
+	return host_set_ios(mmc);
+}
+
+static int dm_mmc_getcd(struct udevice *dev)
+{
+	struct arm_pl180_mmc_plat *pdata = dev_get_platdata(dev);
+	struct mmc *mmc = &pdata->mmc;
+	struct pl180_mmc_host *host = mmc->priv;
+	int value = 1;
+
+	if (dm_gpio_is_valid(&host->cd_gpio)) {
+		value = dm_gpio_get_value(&host->cd_gpio);
+		if (host->cd_inverted)
+			return !value;
+	}
+
+	return value;
+}
+
+static const struct dm_mmc_ops arm_pl180_dm_mmc_ops = {
+	.send_cmd = dm_host_request,
+	.set_ios = dm_host_set_ios,
+	.get_cd = dm_mmc_getcd,
+};
+
+static int arm_pl180_mmc_ofdata_to_platdata(struct udevice *dev)
+{
+	struct arm_pl180_mmc_plat *pdata = dev_get_platdata(dev);
+	struct mmc *mmc = &pdata->mmc;
+	struct pl180_mmc_host *host = mmc->priv;
+	fdt_addr_t addr;
+
+	addr = devfdt_get_addr(dev);
+	if (addr == FDT_ADDR_T_NONE)
+		return -EINVAL;
+
+	host->base = (void *)addr;
+
+	return 0;
+}
+
+static const struct udevice_id arm_pl180_mmc_match[] = {
+	{ .compatible = "st,stm32f4xx-sdio", .data = VERSION1 },
+	{ /* sentinel */ }
+};
+
+U_BOOT_DRIVER(arm_pl180_mmc) = {
+	.name = "arm_pl180_mmc",
+	.id = UCLASS_MMC,
+	.of_match = arm_pl180_mmc_match,
+	.ops = &arm_pl180_dm_mmc_ops,
+	.probe = arm_pl180_mmc_probe,
+	.ofdata_to_platdata = arm_pl180_mmc_ofdata_to_platdata,
+	.priv_auto_alloc_size = sizeof(struct pl180_mmc_host),
+	.platdata_auto_alloc_size = sizeof(struct arm_pl180_mmc_plat),
+};
+#endif

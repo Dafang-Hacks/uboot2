@@ -1,20 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Andes Technology Corporation
  * Macpaul Lin, Andes Technology Corporation <macpaul@andestech.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 #ifndef __AG102_H
@@ -68,8 +55,6 @@
 #define CONFIG_FTSSP010_01_BASE		0x94100000
 /* UART1 - APB STUART Controller (UART0 in Linux) */
 #define CONFIG_FTUART010_01_BASE	0x94200000
-/* FTSDC010 SD Controller */
-#define CONFIG_FTSDC010_BASE		0x94400000
 /* APB - SSP with HDA/AC97 Controller */
 #define CONFIG_FTSSP010_02_BASE		0x94500000
 /* UART2 - APB STUART Controller (UART1 in Linux) */

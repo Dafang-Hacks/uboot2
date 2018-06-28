@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2013, Google Inc.
  *
@@ -11,33 +12,29 @@
  * Marius Groeger <mgroeger@sysgo.de>
  *
  * Copyright (C) 2001  Erik Mouw (J.A.K.Mouw@its.tudelft.nl)
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
 #include <fdt_support.h>
+#ifdef CONFIG_ARMV7_NONSEC
+#include <asm/armv7.h>
+#endif
+#include <asm/psci.h>
+#include <asm/spin_table.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-int arch_fixup_memory_node(void *blob)
+#ifdef CONFIG_FMAN_ENET
+__weak int fdt_update_ethernet_dt(void *blob)
 {
+	return 0;
+}
+#endif
+
+int arch_fixup_fdt(void *blob)
+{
+	__maybe_unused int ret = 0;
+#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_OF_LIBFDT)
 	bd_t *bd = gd->bd;
 	int bank;
 	u64 start[CONFIG_NR_DRAM_BANKS];
@@ -46,7 +43,37 @@ int arch_fixup_memory_node(void *blob)
 	for (bank = 0; bank < CONFIG_NR_DRAM_BANKS; bank++) {
 		start[bank] = bd->bi_dram[bank].start;
 		size[bank] = bd->bi_dram[bank].size;
+#ifdef CONFIG_ARMV7_NONSEC
+		ret = armv7_apply_memory_carveout(&start[bank], &size[bank]);
+		if (ret)
+			return ret;
+#endif
 	}
 
-	return fdt_fixup_memory_banks(blob, start, size, CONFIG_NR_DRAM_BANKS);
+#ifdef CONFIG_OF_LIBFDT
+	ret = fdt_fixup_memory_banks(blob, start, size, CONFIG_NR_DRAM_BANKS);
+	if (ret)
+		return ret;
+#endif
+
+#ifdef CONFIG_ARMV8_SPIN_TABLE
+	ret = spin_table_update_dt(blob);
+	if (ret)
+		return ret;
+#endif
+
+#if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV8_PSCI) || \
+	defined(CONFIG_SEC_FIRMWARE_ARMV8_PSCI)
+	ret = psci_update_dt(blob);
+	if (ret)
+		return ret;
+#endif
+#endif
+
+#ifdef CONFIG_FMAN_ENET
+	ret = fdt_update_ethernet_dt(blob);
+	if (ret)
+		return ret;
+#endif
+	return 0;
 }

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2010, Stefano Babic <sbabic@denx.de>
  *
@@ -6,21 +7,6 @@
  * Copyright (C) 2007, Guennadi Liakhovetski <lg@denx.de>
  *
  * Configuration for the MX35pdk Freescale board.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #ifndef __CONFIG_H
@@ -29,17 +15,11 @@
 #include <asm/arch/imx-regs.h>
 
  /* High Level Configuration Options */
-#define CONFIG_ARM1136	/* This is an arm1136 CPU core */
 #define CONFIG_MX35
 
-#define CONFIG_DISPLAY_CPUINFO
+#define CONFIG_SYS_FSL_CLK
 
 /* Set TEXT at the beginning of the NOR flash */
-#define CONFIG_SYS_TEXT_BASE	0xA0000000
-#define CONFIG_SYS_CACHELINE_SIZE	32
-
-#define CONFIG_BOARD_EARLY_INIT_F
-#define CONFIG_BOARD_LATE_INIT
 
 #define CONFIG_CMDLINE_TAG		/* enable passing of ATAGs */
 #define CONFIG_REVISION_TAG
@@ -54,13 +34,11 @@
 /*
  * Hardware drivers
  */
-#define CONFIG_HARD_I2C
-#define CONFIG_I2C_MXC
-#define CONFIG_SYS_I2C_BASE		I2C1_BASE_ADDR
-#define CONFIG_SYS_I2C_SPEED		100000
-#define CONFIG_MXC_SPI
-#define CONFIG_MXC_GPIO
-
+#define CONFIG_SYS_I2C
+#define CONFIG_SYS_I2C_MXC
+#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
+#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
+#define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
 
 /*
  * PMIC Configs
@@ -68,7 +46,7 @@
 #define CONFIG_POWER
 #define CONFIG_POWER_I2C
 #define CONFIG_POWER_FSL
-#define CONFIG_PMIC_FSL_MC13892
+#define CONFIG_POWER_FSL_MC13892
 #define CONFIG_SYS_FSL_PMIC_I2C_ADDR	0x08
 #define CONFIG_RTC_MC13XXX
 
@@ -86,52 +64,19 @@
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
-#define CONFIG_CONS_INDEX	1
-#define CONFIG_BAUDRATE		115200
 
 /*
  * Command definition
  */
 
-#include <config_cmd_default.h>
-
-#define CONFIG_OF_LIBFDT
-#define CONFIG_CMD_BOOTZ
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
-#define CONFIG_BOOTP_SUBNETMASK
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_DNS
-
-#define CONFIG_CMD_NAND
-#define CONFIG_CMD_CACHE
-
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_NET
 #define CONFIG_NET_RETRY_COUNT	100
-#define CONFIG_CMD_DATE
 
-#define CONFIG_CMD_USB
-#define CONFIG_USB_STORAGE
-#define CONFIG_CMD_MMC
-#define CONFIG_DOS_PARTITION
-#define CONFIG_EFI_PARTITION
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
-
-#define CONFIG_BOOTDELAY	1
 
 #define CONFIG_LOADADDR		0x80800000	/* loadaddr env var */
 
 /*
  * Ethernet on the debug board (SMC911)
  */
-#define CONFIG_SMC911X
-#define CONFIG_SMC911X_16_BIT 1
-#define CONFIG_SMC911X_BASE CS5_BASE_ADDR
-
 #define CONFIG_HAS_ETH1
 #define CONFIG_ETHPRIME
 
@@ -149,26 +94,11 @@
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP	/* undef to save memory */
-#define CONFIG_SYS_PROMPT	"MX35 U-Boot > "
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_SYS_HUSH_PARSER	/* Use the HUSH parser */
-
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS	16	/* max number of command args */
-#define CONFIG_SYS_BARGSIZE CONFIG_SYS_CBSIZE /* Boot Argument Buffer Size */
 
 #define CONFIG_SYS_MEMTEST_START	0	/* memtest works on */
 #define CONFIG_SYS_MEMTEST_END		0x10000
 
-#undef	CONFIG_SYS_CLKS_IN_HZ	/* everything, incl board info, in Hz */
-
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_LOADADDR
-
-#define CONFIG_SYS_HZ				1000
 
 /*
  * Physical Memory Map
@@ -190,14 +120,9 @@
 /*
  * MTD Command for mtdparts
  */
-#define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_DEVICE
 #define CONFIG_FLASH_CFI_MTD
 #define CONFIG_MTD_PARTITIONS
-#define MTDIDS_DEFAULT		"nand0=mxc_nand,nor0=physmap-flash.0"
-#define MTDPARTS_DEFAULT	"mtdparts=mxc_nand:1m(boot),5m(linux),"	\
-				"96m(root),8m(cfg),1938m(user);"	\
-				"physmap-flash.0:512k(b),4m(k),30m(u),28m(r)"
 
 /*
  * FLASH and environment organization
@@ -219,10 +144,7 @@
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + \
 				CONFIG_SYS_MONITOR_LEN)
 
-#define CONFIG_ENV_IS_IN_FLASH
-
 #if defined(CONFIG_FSL_ENV_IN_NAND)
-	#define CONFIG_ENV_IS_IN_NAND
 	#define CONFIG_ENV_OFFSET       (1024 * 1024)
 #endif
 
@@ -240,7 +162,6 @@
 /*
  * NAND FLASH driver setup
  */
-#define CONFIG_NAND_MXC
 #define CONFIG_MXC_NAND_REGS_BASE	(NFC_BASE_ADDR)
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		(NFC_BASE_ADDR)
@@ -248,8 +169,6 @@
 #define CONFIG_SYS_NAND_LARGEPAGE
 
 /* EHCI driver */
-#define CONFIG_USB_EHCI
-#define CONFIG_SYS_USB_EHCI_MAX_ROOT_PORTS	1
 #define CONFIG_EHCI_IS_TDI
 #define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 #define CONFIG_USB_EHCI_MXC
@@ -260,9 +179,6 @@
 #define CONFIG_MXC_USB_PORTSC	(MXC_EHCI_UTMI_16BIT | MXC_EHCI_MODE_UTMI)
 
 /* mmc driver */
-#define CONFIG_MMC
-#define CONFIG_GENERIC_MMC
-#define CONFIG_FSL_ESDHC
 #define CONFIG_SYS_FSL_ESDHC_ADDR	0
 #define CONFIG_SYS_FSL_ESDHC_NUM	1
 
@@ -290,9 +206,9 @@
 	"addmisc=setenv bootargs ${bootargs} ${misc}\0"			\
 	"loadaddr=80800000\0"						\
 	"kernel_addr_r=80800000\0"					\
-	"hostname=" __stringify(CONFIG_HOSTNAME) "\0"			\
-	"bootfile=" __stringify(CONFIG_HOSTNAME) "/uImage\0"		\
-	"ramdisk_file=" __stringify(CONFIG_HOSTNAME) "/uRamdisk\0"	\
+	"hostname=" CONFIG_HOSTNAME "\0"			\
+	"bootfile=" CONFIG_HOSTNAME "/uImage\0"		\
+	"ramdisk_file=" CONFIG_HOSTNAME "/uRamdisk\0"	\
 	"flash_self=run ramargs addip addtty addmtd addmisc;"		\
 		"bootm ${kernel_addr} ${ramdisk_addr}\0"		\
 	"flash_nfs=run nfsargs addip addtty addmtd addmisc;"		\
@@ -302,7 +218,7 @@
 		"bootm ${kernel_addr_r}\0"				\
 	"net_self_load=tftp ${kernel_addr_r} ${bootfile};"		\
 		"tftp ${ramdisk_addr_r} ${ramdisk_file};\0"		\
-	"u-boot=" __stringify(CONFIG_HOSTNAME) "/u-boot.bin\0"		\
+	"u-boot=" CONFIG_HOSTNAME "/u-boot.bin\0"		\
 	"load=tftp ${loadaddr} ${u-boot}\0"				\
 	"uboot_addr=" __stringify(CONFIG_SYS_MONITOR_BASE) "\0"		\
 	"update=protect off ${uboot_addr} +80000;"			\

@@ -1,21 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *  Copyright (c) 2008 Eric Jarrige <eric.jarrige@armadeus.org>
  *  Copyright (c) 2009 Ilya Yanok <yanok@emcraft.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -25,7 +11,8 @@
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/gpio.h>
-#ifdef CONFIG_MXC_MMC
+#include <asm/mach-imx/sys_proto.h>
+#ifdef CONFIG_MMC_MXC
 #include <asm/arch/mxcmmc.h>
 #endif
 
@@ -172,6 +159,11 @@ unsigned int mxc_get_clock(enum mxc_clock clk)
 }
 
 
+u32 get_cpu_rev(void)
+{
+	return MXC_CPU_MX27 << 12;
+}
+
 #if defined(CONFIG_DISPLAY_CPUINFO)
 int print_cpuinfo (void)
 {
@@ -203,7 +195,7 @@ int cpu_eth_init(bd_t *bis)
  */
 int cpu_mmc_init(bd_t *bis)
 {
-#ifdef CONFIG_MXC_MMC
+#ifdef CONFIG_MMC_MXC
 	return mxc_mmc_init(bis);
 #else
 	return 0;
@@ -347,7 +339,7 @@ void imx_get_mac_from_fuse(int dev_id, unsigned char *mac)
 }
 #endif /* CONFIG_FEC_MXC */
 
-#ifdef CONFIG_MXC_MMC
+#ifdef CONFIG_MMC_MXC
 void mx27_sd1_init_pins(void)
 {
 	int i;
@@ -381,7 +373,7 @@ void mx27_sd2_init_pins(void)
 		imx_gpio_mode(mode[i]);
 
 }
-#endif /* CONFIG_MXC_MMC */
+#endif /* CONFIG_MMC_MXC */
 
 #ifndef CONFIG_SYS_DCACHE_OFF
 void enable_caches(void)

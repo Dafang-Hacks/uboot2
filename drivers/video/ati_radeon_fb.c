@@ -1,27 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * ATI Radeon Video card Framebuffer driver.
  *
  * Copyright 2007 Freescale Semiconductor, Inc.
  * Zhang Wei <wei.zhang@freescale.com>
  * Jason Jin <jason.jin@freescale.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  *
  * Some codes of this file is partly ported from Linux kernel
  * ATI video framebuffer driver.
@@ -30,15 +13,15 @@
  *   9200
  *   X300
  *   X700
- *
  */
 
 #include <common.h>
 
 #include <command.h>
+#include <bios_emul.h>
 #include <pci.h>
 #include <asm/processor.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/io.h>
 #include <malloc.h>
 #include <video_fb.h>
@@ -54,11 +37,6 @@
 #define DPRINT(x...) printf(x)
 #else
 #define DPRINT(x...) do{}while(0)
-#endif
-
-#ifndef min_t
-#define min_t(type,x,y) \
-	({ type __x = (x); type __y = (y); __x < __y ? __x: __y; })
 #endif
 
 #define MAX_MAPPED_VRAM	(2048*2048*4)
@@ -566,7 +544,6 @@ void radeon_setmode_9200(int vesa_idx, int bpp)
 }
 
 #include "../bios_emulator/include/biosemu.h"
-extern int BootVideoCardBIOS(pci_dev_t pcidev, BE_VGAInfo ** pVGAInfo, int cleanUp);
 
 int radeon_probe(struct radeonfb_info *rinfo)
 {
@@ -659,7 +636,8 @@ void *video_hw_init(void)
 
 	videomode = CONFIG_SYS_DEFAULT_VIDEO_MODE;
 	/* get video mode via environment */
-	if ((penv = getenv ("videomode")) != NULL) {
+	penv = env_get("videomode");
+	if (penv) {
 		/* deceide if it is a string */
 		if (penv[0] <= '9') {
 			videomode = (int) simple_strtoul (penv, NULL, 16);

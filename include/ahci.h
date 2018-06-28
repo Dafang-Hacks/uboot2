@@ -1,26 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) Freescale Semiconductor, Inc. 2006.
  * Author: Jason Jin<Jason.jin@freescale.com>
  *         Zhang Wei<wei.zhang@freescale.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- *
  */
 #ifndef _AHCI_H_
 #define _AHCI_H_
@@ -75,6 +57,10 @@
 #define PORT_SCR_ERR		0x30 /* SATA phy register: SError */
 #define PORT_SCR_ACT		0x34 /* SATA phy register: SActive */
 
+#ifdef CONFIG_SUNXI_AHCI
+#define PORT_P0DMACR		0x70 /* SUNXI specific "DMA register" */
+#endif
+
 /* PORT_IRQ_{STAT,MASK} bits */
 #define PORT_IRQ_COLD_PRES	(1 << 31) /* cold presence detect */
 #define PORT_IRQ_TF_ERR		(1 << 30) /* task file error */
@@ -104,6 +90,11 @@
 				| PORT_IRQ_DMAS_FIS | PORT_IRQ_PIOS_FIS	\
 				| PORT_IRQ_D2H_REG_FIS
 
+/* PORT_SCR_STAT bits */
+#define PORT_SCR_STAT_DET_MASK	0x3
+#define PORT_SCR_STAT_DET_COMINIT 0x1
+#define PORT_SCR_STAT_DET_PHYRDY 0x3
+
 /* PORT_CMD bits */
 #define PORT_CMD_ATAPI		(1 << 24) /* Device is ATAPI */
 #define PORT_CMD_LIST_ON	(1 << 15) /* cmd list DMA engine running */
@@ -119,29 +110,6 @@
 #define PORT_CMD_ICC_SLUMBER	(0x6 << 28) /* Put i/f in slumber state */
 
 #define AHCI_MAX_PORTS		32
-
-/* SETFEATURES stuff */
-#define SETFEATURES_XFER	0x03
-#define XFER_UDMA_7		0x47
-#define XFER_UDMA_6		0x46
-#define XFER_UDMA_5		0x45
-#define XFER_UDMA_4		0x44
-#define XFER_UDMA_3		0x43
-#define XFER_UDMA_2		0x42
-#define XFER_UDMA_1		0x41
-#define XFER_UDMA_0		0x40
-#define XFER_MW_DMA_2		0x22
-#define XFER_MW_DMA_1		0x21
-#define XFER_MW_DMA_0		0x20
-#define XFER_SW_DMA_2		0x12
-#define XFER_SW_DMA_1		0x11
-#define XFER_SW_DMA_0		0x10
-#define XFER_PIO_4		0x0C
-#define XFER_PIO_3		0x0B
-#define XFER_PIO_2		0x0A
-#define XFER_PIO_1		0x09
-#define XFER_PIO_0		0x08
-#define XFER_PIO_SLOW		0x00
 
 #define ATA_FLAG_SATA		(1 << 3)
 #define ATA_FLAG_NO_LEGACY	(1 << 4) /* no legacy mode check */
@@ -166,23 +134,39 @@ struct ahci_sg {
 };
 
 struct ahci_ioports {
-	u32	cmd_addr;
-	u32	scr_addr;
-	u32	port_mmio;
+	void __iomem	*cmd_addr;
+	void __iomem	*scr_addr;
+	void __iomem	*port_mmio;
 	struct ahci_cmd_hdr	*cmd_slot;
 	struct ahci_sg		*cmd_tbl_sg;
-	u32	cmd_tbl;
+	ulong	cmd_tbl;
 	u32	rx_fis;
 };
 
-struct ahci_probe_ent {
+/**
+ * struct ahci_uc_priv - information about an AHCI controller
+ *
+ * When driver model is used, this is accessible using dev_get_uclass_priv(dev)
+ * where dev is the controller (although at present it sometimes stands alone).
+ */
+struct ahci_uc_priv {
+#if defined(CONFIG_DM_PCI) || defined(CONFIG_DM_SCSI)
+	/*
+	 * TODO(sjg@chromium.org): Drop this once this structure is only used
+	 * in a driver-model context (i.e. attached to a device with
+	 * dev_get_uclass_priv()
+	 */
+	struct udevice *dev;
+#else
 	pci_dev_t	dev;
+#endif
 	struct ahci_ioports	port[AHCI_MAX_PORTS];
+	u16 *ataid[AHCI_MAX_PORTS];
 	u32	n_ports;
 	u32	hard_port_no;
 	u32	host_flags;
 	u32	host_set_flags;
-	u32	mmio_base;
+	void __iomem *mmio_base;
 	u32     pio_mask;
 	u32	udma_mask;
 	u32	flags;
@@ -191,6 +175,116 @@ struct ahci_probe_ent {
 	u32	link_port_map; /*linkup port map*/
 };
 
-int ahci_init(u32 base);
+struct ahci_ops {
+	/**
+	 * reset() - reset the controller
+	 *
+	 * @dev:	Controller to reset
+	 * @return 0 if OK, -ve on error
+	 */
+	int (*reset)(struct udevice *dev);
+
+	/**
+	 * port_status() - get the status of a SATA port
+	 *
+	 * @dev:	Controller to reset
+	 * @port:	Port number to check (0 for first)
+	 * @return 0 if detected, -ENXIO if nothing on port, other -ve on error
+	 */
+	int (*port_status)(struct udevice *dev, int port);
+
+	/**
+	 * scan() - scan SATA ports
+	 *
+	 * @dev:	Controller to scan
+	 * @return 0 if OK, -ve on error
+	 */
+	int (*scan)(struct udevice *dev);
+};
+
+#define ahci_get_ops(dev)        ((struct ahci_ops *)(dev)->driver->ops)
+
+/**
+ * sata_reset() - reset the controller
+ *
+ * @dev:	Controller to reset
+ * @return 0 if OK, -ve on error
+ */
+int sata_reset(struct udevice *dev);
+
+/**
+ * sata_port_status() - get the status of a SATA port
+ *
+ * @dev:	Controller to reset
+ * @port:	Port number to check (0 for first)
+ * @return 0 if detected, -ENXIO if nothin on port, other -ve on error
+ */
+int sata_dm_port_status(struct udevice *dev, int port);
+
+/**
+ * sata_scan() - scan SATA ports
+ *
+ * @dev:	Controller to scan
+ * @return 0 if OK, -ve on error
+ */
+int sata_scan(struct udevice *dev);
+
+int ahci_init(void __iomem *base);
+int ahci_reset(void __iomem *base);
+
+/**
+ * ahci_init_one_dm() - set up a single AHCI port
+ *
+ * @dev: Controller to init
+ */
+int ahci_init_one_dm(struct udevice *dev);
+
+/**
+ * ahci_start_ports_dm() - start all AHCI ports for a controller
+ *
+ * @dev: Controller containing ports to start
+ */
+int ahci_start_ports_dm(struct udevice *dev);
+
+/**
+ * ahci_init_dm() - init AHCI for a controller, finding all ports
+ *
+ * @dev: Device to init
+ */
+int ahci_init_dm(struct udevice *dev, void __iomem *base);
+
+/**
+ * ahci_bind_scsi() - bind a new SCSI bus as a child
+ *
+ * Note that the SCSI bus device will itself bind block devices
+ *
+ * @ahci_dev: AHCI parent device
+ * @devp: Returns new SCSI bus device
+ * @return 0 if OK, -ve on error
+ */
+int ahci_bind_scsi(struct udevice *ahci_dev, struct udevice **devp);
+
+/**
+ * ahci_probe_scsi() - probe and scan the attached SCSI bus
+ *
+ * Note that the SCSI device will itself bind block devices for any storage
+ * devices it finds.
+ *
+ * @ahci_dev: AHCI parent device
+ * @base: Base address of AHCI port
+ * @return 0 if OK, -ve on error
+ */
+int ahci_probe_scsi(struct udevice *ahci_dev, ulong base);
+
+/**
+ * ahci_probe_scsi_pci() - probe and scan the attached SCSI bus on PCI
+ *
+ * Note that the SCSI device will itself bind block devices for any storage
+ * devices it finds.
+ *
+ * @ahci_dev: AHCI parent device
+ * @return 0 if OK, -ve on error
+ */
+int ahci_probe_scsi_pci(struct udevice *ahci_dev);
 
 #endif

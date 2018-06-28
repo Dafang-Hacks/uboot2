@@ -1,22 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de.
  *
  * Copyright (C) 2009 TechNexion Ltd.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc.
  */
 
 #include <common.h>
@@ -35,7 +22,7 @@
 #include <i2c.h>
 #include <spartan3.h>
 #include <asm/gpio.h>
-#ifdef CONFIG_USB_EHCI
+#ifdef CONFIG_USB_EHCI_HCD
 #include <usb.h>
 #include <asm/ehci-omap.h>
 #endif
@@ -107,16 +94,17 @@ static const u32 gpmc_fpga[] = {
 	FPGA_GPMC_CONFIG6,
 };
 
-#ifdef CONFIG_USB_EHCI
+#ifdef CONFIG_USB_EHCI_HCD
 static struct omap_usbhs_board_data usbhs_bdata = {
 	.port_mode[0] = OMAP_EHCI_PORT_MODE_PHY,
 	.port_mode[1] = OMAP_EHCI_PORT_MODE_PHY,
 	.port_mode[2] = OMAP_USBHS_PORT_MODE_UNUSED,
 };
 
-int ehci_hcd_init(int index, struct ehci_hccr **hccr, struct ehci_hcor **hcor)
+int ehci_hcd_init(int index, enum usb_init_type init,
+		struct ehci_hccr **hccr, struct ehci_hcor **hcor)
 {
-	return omap_ehci_hcd_init(&usbhs_bdata, hccr, hcor);
+	return omap_ehci_hcd_init(index, &usbhs_bdata, hccr, hcor);
 }
 
 int ehci_hcd_stop(int index)
@@ -201,7 +189,7 @@ int fpga_clk_fn(int assert_clk, int flush, int cookie)
 	return assert_clk;
 }
 
-Xilinx_Spartan3_Slave_Serial_fns mt_ventoux_fpga_fns = {
+xilinx_spartan3_slave_serial_fns mt_ventoux_fpga_fns = {
 	fpga_pre_config_fn,
 	fpga_pgm_fn,
 	fpga_clk_fn,
@@ -211,7 +199,7 @@ Xilinx_Spartan3_Slave_Serial_fns mt_ventoux_fpga_fns = {
 	fpga_post_config_fn,
 };
 
-Xilinx_desc fpga = XILINX_XC6SLX4_DESC(slave_serial,
+xilinx_desc fpga = XILINX_XC6SLX4_DESC(slave_serial,
 			(void *)&mt_ventoux_fpga_fns, 0);
 
 /* Initialize the FPGA */
@@ -268,11 +256,11 @@ int misc_init_r(void)
 	int ret;
 
 	TAM3517_READ_EEPROM(&info, ret);
-	dieid_num_r();
+	omap_die_id_display();
 
 	if (ret)
 		return 0;
-	eth_addr = getenv("ethaddr");
+	eth_addr = env_get("ethaddr");
 	if (!eth_addr)
 		TAM3517_READ_MAC_FROM_EEPROM(&info);
 
@@ -302,7 +290,7 @@ int board_eth_init(bd_t *bis)
 	return 0;
 }
 
-#if defined(CONFIG_OMAP_HSMMC) && \
+#if defined(CONFIG_MMC_OMAP_HS) && \
 	!defined(CONFIG_SPL_BUILD)
 int board_mmc_init(bd_t *bis)
 {
@@ -322,7 +310,7 @@ int board_video_init(void)
 
 	fb = (void *)0x88000000;
 
-	s = getenv("panel");
+	s = env_get("panel");
 	if (s) {
 		index = simple_strtoul(s, NULL, 10);
 		if (index < ARRAY_SIZE(lcd_cfg))

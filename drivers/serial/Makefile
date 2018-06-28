@@ -1,79 +1,70 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2006-2009
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-#
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
-#
 
-include $(TOPDIR)/config.mk
+ifdef CONFIG_SPL_BUILD
 
-LIB	:= $(obj)libserial.o
-
-COBJS-y += serial.o
-#COBJS-y += serial_cloner.o
-
-COBJS-$(CONFIG_ALTERA_UART) += altera_uart.o
-COBJS-$(CONFIG_ALTERA_JTAG_UART) += altera_jtag_uart.o
-COBJS-$(CONFIG_ARM_DCC) += arm_dcc.o
-COBJS-$(CONFIG_ATMEL_USART) += atmel_usart.o
-COBJS-$(CONFIG_LPC32XX_HSUART) += lpc32xx_hsuart.o
-COBJS-$(CONFIG_MCFUART) += mcfuart.o
-COBJS-$(CONFIG_OPENCORES_YANU) += opencores_yanu.o
-COBJS-$(CONFIG_SYS_NS16550) += ns16550.o
-COBJS-$(CONFIG_S5P) += serial_s5p.o
-COBJS-$(CONFIG_SYS_NS16550_SERIAL) += serial_ns16550.o
-COBJS-$(CONFIG_IMX_SERIAL) += serial_imx.o
-COBJS-$(CONFIG_IXP_SERIAL) += serial_ixp.o
-COBJS-$(CONFIG_KS8695_SERIAL) += serial_ks8695.o
-COBJS-$(CONFIG_MAX3100_SERIAL) += serial_max3100.o
-COBJS-$(CONFIG_MXC_UART) += serial_mxc.o
-COBJS-$(CONFIG_PL010_SERIAL) += serial_pl01x.o
-COBJS-$(CONFIG_PL011_SERIAL) += serial_pl01x.o
-COBJS-$(CONFIG_PXA_SERIAL) += serial_pxa.o
-COBJS-$(CONFIG_SA1100_SERIAL) += serial_sa1100.o
-COBJS-$(CONFIG_S3C24X0_SERIAL) += serial_s3c24x0.o
-COBJS-$(CONFIG_S3C44B0_SERIAL) += serial_s3c44b0.o
-COBJS-$(CONFIG_XILINX_UARTLITE) += serial_xuartlite.o
-COBJS-$(CONFIG_SANDBOX_SERIAL) += sandbox.o
-COBJS-$(CONFIG_SCIF_CONSOLE) += serial_sh.o
-COBJS-$(CONFIG_ZYNQ_SERIAL) += serial_zynq.o
-COBJS-$(CONFIG_BFIN_SERIAL) += serial_bfin.o
-COBJS-$(CONFIG_FSL_LPUART) += serial_lpuart.o
-
-ifndef CONFIG_SPL_BUILD
-COBJS-$(CONFIG_USB_TTY) += usbtty.o
+ifeq ($(CONFIG_$(SPL_TPL_)BUILD)$(CONFIG_$(SPL_TPL_)DM_SERIAL),yy)
+obj-y += serial-uclass.o
+else
+obj-y += serial.o
 endif
 
-COBJS	:= $(sort $(COBJS-y))
-SRCS	:= $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(COBJS))
+else
 
-all:	$(LIB)
+ifdef CONFIG_DM_SERIAL
+obj-y += serial-uclass.o
+else
+obj-y += serial.o
+endif
 
-$(LIB):	$(obj).depend $(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
+endif
 
-#########################################################################
+ifdef CONFIG_DM_SERIAL
+obj-$(CONFIG_PL01X_SERIAL) += serial_pl01x.o
+else
+obj-$(CONFIG_PL010_SERIAL) += serial_pl01x.o
+obj-$(CONFIG_PL011_SERIAL) += serial_pl01x.o
+obj-$(CONFIG_SYS_NS16550_SERIAL) += serial_ns16550.o
+endif
 
-# defines $(obj).depend target
-include $(SRCTREE)/rules.mk
+obj-$(CONFIG_ALTERA_UART) += altera_uart.o
+obj-$(CONFIG_ALTERA_JTAG_UART) += altera_jtag_uart.o
+obj-$(CONFIG_AR933X_UART) += serial_ar933x.o
+obj-$(CONFIG_ARM_DCC) += arm_dcc.o
+obj-$(CONFIG_ATMEL_USART) += atmel_usart.o
+obj-$(CONFIG_BCM6345_SERIAL) += serial_bcm6345.o
+obj-$(CONFIG_EFI_APP) += serial_efi.o
+obj-$(CONFIG_LPC32XX_HSUART) += lpc32xx_hsuart.o
+obj-$(CONFIG_MCFUART) += mcfuart.o
+obj-$(CONFIG_SYS_NS16550) += ns16550.o
+obj-$(CONFIG_S5P) += serial_s5p.o
+obj-$(CONFIG_MXC_UART) += serial_mxc.o
+obj-$(CONFIG_PXA_SERIAL) += serial_pxa.o
+obj-$(CONFIG_MESON_SERIAL) += serial_meson.o
+obj-$(CONFIG_INTEL_MID_SERIAL) += serial_intel_mid.o
+ifdef CONFIG_SPL_BUILD
+obj-$(CONFIG_ROCKCHIP_SERIAL) += serial_rockchip.o
+endif
+obj-$(CONFIG_XILINX_UARTLITE) += serial_xuartlite.o
+obj-$(CONFIG_SANDBOX_SERIAL) += sandbox.o
+obj-$(CONFIG_SCIF_CONSOLE) += serial_sh.o
+obj-$(CONFIG_ZYNQ_SERIAL) += serial_zynq.o
+obj-$(CONFIG_FSL_LPUART) += serial_lpuart.o
+obj-$(CONFIG_FSL_LINFLEXUART) += serial_linflexuart.o
+obj-$(CONFIG_ARC_SERIAL) += serial_arc.o
+obj-$(CONFIG_UNIPHIER_SERIAL) += serial_uniphier.o
+obj-$(CONFIG_STM32_SERIAL) += serial_stm32.o
+obj-$(CONFIG_STI_ASC_SERIAL) += serial_sti_asc.o
+obj-$(CONFIG_PIC32_SERIAL) += serial_pic32.o
+obj-$(CONFIG_BCM283X_MU_SERIAL) += serial_bcm283x_mu.o
+obj-$(CONFIG_BCM283X_PL011_SERIAL) += serial_bcm283x_pl011.o
+obj-$(CONFIG_MSM_SERIAL) += serial_msm.o
+obj-$(CONFIG_MVEBU_A3700_UART) += serial_mvebu_a3700.o
+obj-$(CONFIG_MPC8XX_CONS) += serial_mpc8xx.o
+obj-$(CONFIG_NULLDEV_SERIAL) += serial_nulldev.o
 
-sinclude $(obj).depend
-
-#########################################################################
+ifndef CONFIG_SPL_BUILD
+obj-$(CONFIG_USB_TTY) += usbtty.o
+endif

@@ -1,97 +1,114 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2002-2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-#
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
-#
 
-include $(TOPDIR)/config.mk
+lib-$(CONFIG_USE_PRIVATE_LIBGCC) += ashldi3.o ashrdi3.o lshrdi3.o \
+				    lib1funcs.o uldivmod.o div0.o \
+				    div64.o muldi3.o
 
-LIB	= $(obj)lib$(ARCH).o
-LIBGCC	= $(obj)libgcc.o
+ifdef CONFIG_CPU_V7M
+obj-y	+= vectors_m.o crt0.o
+else ifdef CONFIG_ARM64
+obj-y	+= crt0_64.o
+else
+obj-y	+= vectors.o crt0.o
+endif
 
-GLSOBJS	+= _ashldi3.o
-GLSOBJS	+= _ashrdi3.o
-GLSOBJS	+= _divsi3.o
-GLSOBJS	+= _lshrdi3.o
-GLSOBJS	+= _modsi3.o
-GLSOBJS	+= _udivsi3.o
-GLSOBJS	+= _umodsi3.o
-
-GLCOBJS	+= div0.o
-
-SOBJS-y += crt0.o
+ifdef CONFIG_ARM64
+obj-y   += setjmp_aarch64.o
+else
+obj-y   += setjmp.o
+endif
 
 ifndef CONFIG_SPL_BUILD
-SOBJS-y += relocate.o
-ifndef CONFIG_SYS_GENERIC_BOARD
-COBJS-y	+= board.o
-endif
-COBJS-y += sections.o
-
-COBJS-$(CONFIG_OF_LIBFDT) += bootm-fdt.o
-COBJS-$(CONFIG_CMD_BOOTM) += bootm.o
-COBJS-$(CONFIG_SYS_L2_PL310) += cache-pl310.o
-SOBJS-$(CONFIG_USE_ARCH_MEMSET) += memset.o
-SOBJS-$(CONFIG_USE_ARCH_MEMCPY) += memcpy.o
+ifdef CONFIG_ARM64
+obj-y	+= relocate_64.o
 else
-COBJS-$(CONFIG_SPL_FRAMEWORK) += spl.o
+obj-y	+= relocate.o
 endif
 
-COBJS-y	+= interrupts.o
-COBJS-y	+= reset.o
-
-COBJS-y	+= cache.o
-COBJS-y	+= cache-cp15.o
-
-SRCS	:= $(GLSOBJS:.o=.S) $(GLCOBJS:.o=.c) \
-	   $(SOBJS-y:.o=.S) $(COBJS-y:.o=.c)
-OBJS	:= $(addprefix $(obj),$(SOBJS-y) $(COBJS-y))
-LGOBJS	:= $(addprefix $(obj),$(GLSOBJS)) \
-	   $(addprefix $(obj),$(GLCOBJS))
-
-# Always build libarm.o
-TARGETS	:= $(LIB)
-
-# Build private libgcc only when asked for
-ifdef USE_PRIVATE_LIBGCC
-TARGETS	+= $(LIBGCC)
+obj-$(CONFIG_CPU_V7M) += cmd_boot.o
+obj-$(CONFIG_OF_LIBFDT) += bootm-fdt.o
+obj-$(CONFIG_CMD_BOOTI) += bootm.o image.o
+obj-$(CONFIG_CMD_BOOTM) += bootm.o
+obj-$(CONFIG_CMD_BOOTZ) += bootm.o zimage.o
+obj-$(CONFIG_SYS_L2_PL310) += cache-pl310.o
+else
+obj-$(CONFIG_SPL_FRAMEWORK) += spl.o
+obj-$(CONFIG_SPL_FRAMEWORK) += zimage.o
+obj-$(CONFIG_OF_LIBFDT) += bootm-fdt.o
 endif
+obj-$(CONFIG_$(SPL_TPL_)USE_ARCH_MEMSET) += memset.o
+obj-$(CONFIG_$(SPL_TPL_)USE_ARCH_MEMCPY) += memcpy.o
+obj-$(CONFIG_SEMIHOSTING) += semihosting.o
+
+obj-y	+= sections.o
+obj-y	+= stack.o
+ifdef CONFIG_CPU_V7M
+obj-y	+= interrupts_m.o
+else ifdef CONFIG_ARM64
+obj-$(CONFIG_FSL_LAYERSCAPE) += ccn504.o
+ifneq ($(CONFIG_GICV2)$(CONFIG_GICV3),)
+obj-y	+= gic_64.o
+endif
+obj-y	+= interrupts_64.o
+else
+obj-y	+= interrupts.o
+endif
+ifndef CONFIG_SYSRESET
+obj-y	+= reset.o
+endif
+
+obj-y	+= cache.o
+ifndef CONFIG_ARM64
+ifndef CONFIG_CPU_V7M
+obj-y	+= cache-cp15.o
+endif
+endif
+
+obj-y	+= psci-dt.o
+
+obj-$(CONFIG_DEBUG_LL)	+= debug.o
 
 # For EABI conformant tool chains, provide eabi_compat()
 ifneq (,$(findstring -mabi=aapcs-linux,$(PLATFORM_CPPFLAGS)))
-TARGETS	+= $(obj)eabi_compat.o
+extra-y	+= eabi_compat.o
 endif
 
-all:	$(TARGETS)
+# some files can only build in ARM or THUMB2, not THUMB1
 
-$(LIB):	$(obj).depend $(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
+ifdef CONFIG_$(SPL_)SYS_THUMB_BUILD
+asflags-$(CONFIG_HAS_THUMB2) += -DCONFIG_THUMB2_KERNEL
+ifndef CONFIG_HAS_THUMB2
 
-$(LIBGCC): $(obj).depend $(LGOBJS)
-	$(call cmd_link_o_target, $(LGOBJS))
+# for C files, just apend -marm, which will override previous -mthumb*
 
-#########################################################################
+ifndef CONFIG_ARM64
+CFLAGS_cache.o := -marm
+CFLAGS_cache-cp15.o := -marm
+endif
 
-# defines $(obj).depend target
-include $(SRCTREE)/rules.mk
+# For .S, drop -mthumb* and other thumb-related options.
+# CFLAGS_REMOVE_* would not have an effet, so AFLAGS_REMOVE_*
+# was implemented and is used here.
+# Also, define ${target}_NO_THUMB_BUILD for these two targets
+# so that the code knows it should not use Thumb.
 
-sinclude $(obj).depend
+AFLAGS_REMOVE_memset.o := -mthumb -mthumb-interwork
+AFLAGS_REMOVE_memcpy.o := -mthumb -mthumb-interwork
+AFLAGS_memset.o := -DMEMSET_NO_THUMB_BUILD
+AFLAGS_memcpy.o := -DMEMCPY_NO_THUMB_BUILD
+endif
+endif
 
-#########################################################################
+# For building EFI apps
+CFLAGS_$(EFI_CRT0) := $(CFLAGS_EFI)
+CFLAGS_REMOVE_$(EFI_CRT0) := $(CFLAGS_NON_EFI)
+
+CFLAGS_$(EFI_RELOC) := $(CFLAGS_EFI)
+CFLAGS_REMOVE_$(EFI_RELOC) := $(CFLAGS_NON_EFI)
+
+extra-$(CONFIG_CMD_BOOTEFI_HELLO_COMPILE) += $(EFI_CRT0) $(EFI_RELOC)
+extra-$(CONFIG_CMD_BOOTEFI_SELFTEST) += $(EFI_CRT0) $(EFI_RELOC)
+extra-$(CONFIG_EFI) += $(EFI_CRT0) $(EFI_RELOC)

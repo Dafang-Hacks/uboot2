@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2011 Samsung Electronics
  * Lukasz Majewski <l.majewski@samsung.com>
@@ -6,24 +7,6 @@
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de
  *
  * (C) Copyright 2008-2009 Freescale Semiconductor, Inc.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -39,7 +22,7 @@ int check_reg(struct pmic *p, u32 reg)
 	if (reg >= p->number_of_regs) {
 		printf("<reg num> = %d is invalid. Should be less than %d\n",
 		       reg, p->number_of_regs);
-		return -1;
+		return -EINVAL;
 	}
 
 	return 0;
@@ -50,7 +33,7 @@ int pmic_set_output(struct pmic *p, u32 reg, int out, int on)
 	u32 val;
 
 	if (pmic_reg_read(p, reg, &val))
-		return -1;
+		return -ENOTSUPP;
 
 	if (on)
 		val |= out;
@@ -58,38 +41,8 @@ int pmic_set_output(struct pmic *p, u32 reg, int out, int on)
 		val &= ~out;
 
 	if (pmic_reg_write(p, reg, val))
-		return -1;
+		return -ENOTSUPP;
 
-	return 0;
-}
-
-static void pmic_show_info(struct pmic *p)
-{
-	printf("PMIC: %s\n", p->name);
-}
-
-static int pmic_dump(struct pmic *p)
-{
-	int i, ret;
-	u32 val;
-
-	if (!p) {
-		puts("Wrong PMIC name!\n");
-		return -1;
-	}
-
-	pmic_show_info(p);
-	for (i = 0; i < p->number_of_regs; i++) {
-		ret = pmic_reg_read(p, i, &val);
-		if (ret)
-			puts("PMIC: Registers dump failed\n");
-
-		if (!(i % 8))
-			printf("\n0x%02x: ", i);
-
-		printf("%08x ", val);
-	}
-	puts("\n");
 	return 0;
 }
 
@@ -124,7 +77,33 @@ struct pmic *pmic_get(const char *s)
 	return NULL;
 }
 
-const char *power_get_interface(int interface)
+#ifndef CONFIG_SPL_BUILD
+static int pmic_dump(struct pmic *p)
+{
+	int i, ret;
+	u32 val;
+
+	if (!p) {
+		puts("Wrong PMIC name!\n");
+		return -ENODEV;
+	}
+
+	printf("PMIC: %s\n", p->name);
+	for (i = 0; i < p->number_of_regs; i++) {
+		ret = pmic_reg_read(p, i, &val);
+		if (ret)
+			puts("PMIC: Registers dump failed\n");
+
+		if (!(i % 8))
+			printf("\n0x%02x: ", i);
+
+		printf("%08x ", val);
+	}
+	puts("\n");
+	return 0;
+}
+
+static const char *power_get_interface(int interface)
 {
 	const char *power_interface[] = {"I2C", "SPI", "|+|-|"};
 	return power_interface[interface];
@@ -141,7 +120,7 @@ static void pmic_list_names(void)
 	}
 }
 
-int do_pmic(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_pmic(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	u32 ret, reg, val;
 	char *cmd, *name;
@@ -155,6 +134,9 @@ int do_pmic(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		pmic_list_names();
 		return CMD_RET_SUCCESS;
 	}
+
+	if (argc < 3)
+		return CMD_RET_USAGE;
 
 	name = argv[1];
 	cmd = argv[2];
@@ -200,18 +182,21 @@ int do_pmic(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		if (argc < 4)
 			return CMD_RET_USAGE;
 
+		if (!p->pbat) {
+			printf("%s is not a battery\n", p->name);
+			return CMD_RET_FAILURE;
+		}
+
 		if (strcmp(argv[3], "state") == 0)
 			p->fg->fg_battery_check(p->pbat->fg, p);
 
 		if (strcmp(argv[3], "charge") == 0) {
-			if (p->pbat) {
-				printf("BAT: %s charging (ctrl+c to break)\n",
-				       p->name);
-				if (p->low_power_mode)
-					p->low_power_mode();
-				if (p->pbat->battery_charge)
-					p->pbat->battery_charge(p);
-			}
+			printf("BAT: %s charging (ctrl+c to break)\n",
+			       p->name);
+			if (p->low_power_mode)
+				p->low_power_mode();
+			if (p->pbat->battery_charge)
+				p->pbat->battery_charge(p);
 		}
 
 		return CMD_RET_SUCCESS;
@@ -231,3 +216,4 @@ U_BOOT_CMD(
 	"pmic name bat state - write register\n"
 	"pmic name bat charge - write register\n"
 );
+#endif

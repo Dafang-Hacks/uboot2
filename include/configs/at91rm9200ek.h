@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2010 Andreas Bießmann <biessmann.devel@googlemail.com>
  *
@@ -7,30 +8,12 @@
  * Rick Bronson <rick@efn.org>
  *
  * Configuration settings for the AT91RM9200EK board.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #ifndef __AT91RM9200EK_CONFIG_H__
 #define __AT91RM9200EK_CONFIG_H__
 
-#include <asm/sizes.h>
+#include <linux/sizes.h>
 
 /*
  * set some initial configurations depending on configure target
@@ -41,9 +24,6 @@
  */
 #ifdef CONFIG_RAMBOOT
 #define CONFIG_SKIP_LOWLEVEL_INIT
-#define CONFIG_SYS_TEXT_BASE 0x20100000
-#else
-#define CONFIG_SYS_TEXT_BASE 0x10000000
 #endif
 
 /*
@@ -59,12 +39,10 @@
 #define AT91C_MAIN_CLOCK		((AT91C_XTAL_CLOCK / 4) * 39)
 #define AT91C_MASTER_CLOCK		(AT91C_MAIN_CLOCK / 3 )
 #define CONFIG_SYS_HZ_CLOCK		(AT91C_MASTER_CLOCK / 2)
-#define CONFIG_SYS_HZ			1000
 
 /* CPU configuration */
 #define CONFIG_AT91RM9200
 #define CONFIG_AT91RM9200EK
-#define CONFIG_CPUAT91
 #define USE_920T_MMU
 
 #include <asm/hardware.h>	/* needed for port definitions */
@@ -72,11 +50,6 @@
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_INITRD_TAG
-
-#define CONFIG_BOARD_EARLY_INIT_F
-
-#define CONFIG_CMD_BOOTZ
-#define CONFIG_OF_LIBFDT
 
 /*
  * Memory Configuration
@@ -132,19 +105,9 @@
 #define CONFIG_USART_BASE	ATMEL_BASE_DBGU
 #define CONFIG_USART_ID		0/* ignored in arm */
 
-#define CONFIG_BAUDRATE			115200
-
 /*
  * Command line configuration.
  */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_DHCP
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_MII
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_USB
-#undef CONFIG_CMD_FPGA
 
 /*
  * Network Driver Setting
@@ -170,10 +133,8 @@
  * USB Config
  */
 #define CONFIG_USB_ATMEL			1
+#define CONFIG_USB_ATMEL_CLK_SEL_PLLB
 #define CONFIG_USB_OHCI_NEW			1
-#define CONFIG_USB_KEYBOARD			1
-#define CONFIG_USB_STORAGE			1
-#define CONFIG_DOS_PARTITION			1
 
 #define CONFIG_SYS_USB_OHCI_CPU_INIT		1
 #define CONFIG_SYS_USB_OHCI_REGS_BASE		ATMEL_USB_HOST_BASE
@@ -183,7 +144,6 @@
 /*
  * Environment Settings
  */
-#define CONFIG_ENV_IS_IN_FLASH
 
 /*
  * after u-boot.bin
@@ -198,7 +158,6 @@
 /*
  * Boot option
  */
-#define CONFIG_BOOTDELAY		3
 
 /* default load address */
 #define CONFIG_SYS_LOAD_ADDR		CONFIG_SYS_SDRAM_BASE + SZ_16M
@@ -207,16 +166,6 @@
 /*
  * Shell Settings
  */
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_SYS_LONGHELP
-#define CONFIG_AUTO_COMPLETE
-#define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT		"U-Boot> "
-#define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size */
-#define CONFIG_SYS_MAXARGS		16	/* max number of command args */
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE		\
-		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
 
 /*
  * Size of malloc() pool

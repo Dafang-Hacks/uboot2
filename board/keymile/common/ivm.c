@@ -1,32 +1,17 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2011
  * Holger Brunck, Keymile GmbH Hannover, holger.brunck@keymile.com
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
-#include <hush.h>
+#include <cli_hush.h>
 #include <i2c.h>
 #include "common.h"
 
-int ivm_calc_crc(unsigned char *buf, int len)
+#define MAC_STR_SZ	20
+
+static int ivm_calc_crc(unsigned char *buf, int len)
 {
 	const unsigned short crc_tab[16] = {
 		0x0000, 0xCC01, 0xD801, 0x1400,
@@ -136,7 +121,7 @@ static int ivm_findinventorystring(int type,
 
 	/* Look for the requested number of CR. */
 	while ((cr != nr) && (addr < INVENTORYDATASIZE)) {
-		if ((buf[addr] == '\r'))
+		if (buf[addr] == '\r')
 			cr++;
 		addr++;
 	}
@@ -201,45 +186,44 @@ static int ivm_check_crc(unsigned char *buf, int block)
 	return 0;
 }
 
-static int calculate_mac_offset(unsigned char *valbuf, unsigned char *buf,
-				int offset)
+/* take care of the possible MAC address offset and the IVM content offset */
+static int process_mac(unsigned char *valbuf, unsigned char *buf,
+				int offset, bool unique)
 {
+	unsigned char mac[6];
 	unsigned long val = (buf[4] << 16) + (buf[5] << 8) + buf[6];
 
-	if (offset == 0)
-		return 0;
+	/* use an intermediate buffer, to not change IVM content
+	 * MAC address is at offset 1
+	 */
+	memcpy(mac, buf+1, 6);
 
-	val += offset;
-	buf[4] = (val >> 16) & 0xff;
-	buf[5] = (val >> 8) & 0xff;
-	buf[6] = val & 0xff;
-	sprintf((char *)valbuf, "%pM", buf + 1);
+	/* MAC adress can be set to locally administred, this is only allowed
+	 * for interfaces which have now connection to the outside. For these
+	 * addresses we need to set the second bit in the first byte.
+	 */
+	if (!unique)
+		mac[0] |= 0x2;
+
+	if (offset) {
+		val += offset;
+		mac[3] = (val >> 16) & 0xff;
+		mac[4] = (val >> 8) & 0xff;
+		mac[5] = val & 0xff;
+	}
+
+	sprintf((char *)valbuf, "%pM", mac);
 	return 0;
 }
 
 static int ivm_analyze_block2(unsigned char *buf, int len)
 {
-	unsigned char	valbuf[CONFIG_SYS_IVM_EEPROM_PAGE_LEN];
+	unsigned char	valbuf[MAC_STR_SZ];
 	unsigned long	count;
 
 	/* IVM_MAC Adress begins at offset 1 */
 	sprintf((char *)valbuf, "%pM", buf + 1);
 	ivm_set_value("IVM_MacAddress", (char *)valbuf);
-	/* if an offset is defined, add it */
-	calculate_mac_offset(buf, valbuf, CONFIG_PIGGY_MAC_ADRESS_OFFSET);
-#ifdef MACH_TYPE_KM_KIRKWOOD
-	setenv((char *)"ethaddr", (char *)valbuf);
-#else
-	if (getenv("ethaddr") == NULL)
-		setenv((char *)"ethaddr", (char *)valbuf);
-#endif
-#ifdef CONFIG_KMVECT1
-/* KMVECT1 has two ethernet interfaces */
-	if (getenv("eth1addr") == NULL) {
-		calculate_mac_offset(buf, valbuf, 1);
-		setenv((char *)"eth1addr", (char *)valbuf);
-	}
-#endif
 	/* IVM_MacCount */
 	count = (buf[10] << 24) +
 		   (buf[11] << 16) +
@@ -276,7 +260,7 @@ int ivm_analyze_eeprom(unsigned char *buf, int len)
 
 	GET_STRING("IVM_Symbol", IVM_POS_SYMBOL_ONLY, 8)
 	GET_STRING("IVM_DeviceName", IVM_POS_SHORT_TEXT, 64)
-	tmp = (unsigned char *) getenv("IVM_DeviceName");
+	tmp = (unsigned char *)env_get("IVM_DeviceName");
 	if (tmp) {
 		int	len = strlen((char *)tmp);
 		int	i = 0;
@@ -312,36 +296,52 @@ int ivm_analyze_eeprom(unsigned char *buf, int len)
 	return 0;
 }
 
-int ivm_read_eeprom(void)
+static int ivm_populate_env(unsigned char *buf, int len)
 {
-#if defined(CONFIG_I2C_MUX)
-	I2C_MUX_DEVICE *dev = NULL;
+	unsigned char	*page2;
+	unsigned char	valbuf[MAC_STR_SZ];
+
+	/* do we have the page 2 filled ? if not return */
+	if (ivm_check_crc(buf, 2))
+		return 0;
+	page2 = &buf[CONFIG_SYS_IVM_EEPROM_PAGE_LEN*2];
+
+#ifndef CONFIG_KMTEGR1
+	/* if an offset is defined, add it */
+	process_mac(valbuf, page2, CONFIG_PIGGY_MAC_ADRESS_OFFSET, true);
+	env_set((char *)"ethaddr", (char *)valbuf);
+#ifdef CONFIG_KMVECT1
+/* KMVECT1 has two ethernet interfaces */
+	process_mac(valbuf, page2, 1, true);
+	env_set((char *)"eth1addr", (char *)valbuf);
 #endif
-	uchar i2c_buffer[CONFIG_SYS_IVM_EEPROM_MAX_LEN];
-	uchar	*buf;
-	unsigned long dev_addr = CONFIG_SYS_IVM_EEPROM_ADR;
+#else
+/* KMTEGR1 has a special setup. eth0 has no connection to the outside and
+ * gets an locally administred MAC address, eth1 is the debug interface and
+ * gets the official MAC address from the IVM
+ */
+	process_mac(valbuf, page2, CONFIG_PIGGY_MAC_ADRESS_OFFSET, false);
+	env_set((char *)"ethaddr", (char *)valbuf);
+	process_mac(valbuf, page2, CONFIG_PIGGY_MAC_ADRESS_OFFSET, true);
+	env_set((char *)"eth1addr", (char *)valbuf);
+#endif
+
+	return 0;
+}
+
+int ivm_read_eeprom(unsigned char *buf, int len)
+{
 	int ret;
 
-#if defined(CONFIG_I2C_MUX)
-	/* First init the Bus, select the Bus */
-	buf = (unsigned char *) getenv("EEprom_ivm");
-	if (buf != NULL)
-		dev = i2c_mux_ident_muxstring(buf);
-	if (dev == NULL) {
-		printf("Error couldnt add Bus for IVM\n");
-		return -1;
-	}
-	i2c_set_bus_num(dev->busid);
-#endif
+	i2c_set_bus_num(CONFIG_KM_IVM_BUS);
 	/* add deblocking here */
 	i2c_make_abort();
 
-	ret = i2c_read(dev_addr, 0, 1, i2c_buffer,
-		CONFIG_SYS_IVM_EEPROM_MAX_LEN);
+	ret = i2c_read(CONFIG_SYS_IVM_EEPROM_ADR, 0, 1, buf, len);
 	if (ret != 0) {
 		printf("Error reading EEprom\n");
 		return -2;
 	}
 
-	return ivm_analyze_eeprom(i2c_buffer, CONFIG_SYS_IVM_EEPROM_MAX_LEN);
+	return ivm_populate_env(buf, len);
 }

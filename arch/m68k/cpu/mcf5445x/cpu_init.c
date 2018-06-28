@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  *
  * (C) Copyright 2000-2003
@@ -5,24 +6,6 @@
  *
  * (C) Copyright 2004-2007, 2012 Freescale Semiconductor, Inc.
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -212,7 +195,7 @@ void cpu_init_f(void)
 		GPIO_PAR_FBCTL_OE | GPIO_PAR_FBCTL_TA_TA |
 		GPIO_PAR_FBCTL_RW_RW | GPIO_PAR_FBCTL_TS_TS);
 
-#ifdef CONFIG_FSL_I2C
+#ifdef CONFIG_SYS_FSL_I2C
 	out_be16(&gpio->par_feci2c,
 		GPIO_PAR_FECI2C_SCL_SCL | GPIO_PAR_FECI2C_SDA_SDA);
 #endif
@@ -221,6 +204,7 @@ void cpu_init_f(void)
 	/* FlexBus Chipselect */
 	init_fbcs();
 
+#ifdef CONFIG_SYS_CS0_BASE
 	/*
 	 * now the flash base address is no longer at 0 (Newer ColdFire family
 	 * boot at address 0 instead of 0xFFnn_nnnn). The vector table must
@@ -228,6 +212,7 @@ void cpu_init_f(void)
 	 */
 	if (CONFIG_SYS_CS0_BASE != 0)
 		setvbr(CONFIG_SYS_CS0_BASE);
+#endif
 
 	icache_enable();
 }
@@ -380,9 +365,9 @@ void uart_port_conf(int port)
 int fecpin_setclear(struct eth_device *dev, int setclear)
 {
 	gpio_t *gpio = (gpio_t *) MMAP_GPIO;
+#ifdef CONFIG_MCF5445x
 	struct fec_info_s *info = (struct fec_info_s *)dev->priv;
 
-#ifdef CONFIG_MCF5445x
 	if (setclear) {
 #ifdef CONFIG_SYS_FEC_NO_SHARED_PHY
 		if (info->iobase == CONFIG_SYS_FEC0_IOBASE)

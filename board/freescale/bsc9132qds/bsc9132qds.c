@@ -1,23 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -27,16 +10,19 @@
 #include <asm/immap_85xx.h>
 #include <asm/io.h>
 #include <miiphy.h>
-#include <libfdt.h>
+#include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <fsl_mdio.h>
 #include <tsec.h>
 #include <mmc.h>
 #include <netdev.h>
-#include <asm/fsl_ifc.h>
+#include <fsl_ifc.h>
 #include <hwconfig.h>
 #include <i2c.h>
-#include <asm/fsl_ddr_sdram.h>
+#include <fsl_ddr_sdram.h>
+#include <jffs2/load_kernel.h>
+#include <mtd_node.h>
+#include <flash.h>
 
 #ifdef CONFIG_PCI
 #include <pci.h>
@@ -49,9 +35,9 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int board_early_init_f(void)
 {
-	struct fsl_ifc *ifc = (void *)CONFIG_SYS_IFC_ADDR;
+	struct fsl_ifc ifc = {(void *)CONFIG_SYS_IFC_ADDR, (void *)NULL};
 
-	setbits_be32(&ifc->ifc_gcr, 1 << IFC_GCR_TBCTL_TRN_TIME_SHIFT);
+	setbits_be32(&ifc.gregs->ifc_gcr, 1 << IFC_GCR_TBCTL_TRN_TIME_SHIFT);
 
 	return 0;
 }
@@ -141,11 +127,32 @@ void board_config_serdes_mux(void)
 	}
 }
 
+/* Configure DSP DDR controller */
+void dsp_ddr_configure(void)
+{
+	/*
+	 *There are separate DDR-controllers for DSP and PowerPC side DDR.
+	 *copy the ddr controller settings from PowerPC side DDR controller
+	 *to the DSP DDR controller as connected DDR memories are similar.
+	 */
+	struct ccsr_ddr __iomem *pa_ddr =
+			(struct ccsr_ddr __iomem *)CONFIG_SYS_FSL_DDR_ADDR;
+	struct ccsr_ddr temp_ddr;
+	struct ccsr_ddr __iomem *dsp_ddr =
+			(struct ccsr_ddr __iomem *)CONFIG_SYS_FSL_DSP_CCSR_DDR_ADDR;
+
+	memcpy(&temp_ddr, pa_ddr, sizeof(struct ccsr_ddr));
+	temp_ddr.cs0_bnds = CONFIG_SYS_DDR1_CS0_BNDS;
+	temp_ddr.sdram_cfg &= ~SDRAM_CFG_MEM_EN;
+	memcpy(dsp_ddr, &temp_ddr, sizeof(struct ccsr_ddr));
+	dsp_ddr->sdram_cfg |= SDRAM_CFG_MEM_EN;
+}
+
 int board_early_init_r(void)
 {
-#ifndef CONFIG_SYS_NO_FLASH
+#ifdef CONFIG_MTD_NOR_FLASH
 	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
-	const u8 flash_esel = find_tlb_idx((void *)flashbase, 1);
+	int flash_esel = find_tlb_idx((void *)flashbase, 1);
 
 	/*
 	 * Remap Boot flash region to caching-inhibited
@@ -156,8 +163,14 @@ int board_early_init_r(void)
 	flush_dcache();
 	invalidate_icache();
 
-	/* invalidate existing TLB entry for flash */
-	disable_tlb(flash_esel);
+	if (flash_esel == -1) {
+		/* very unlikely unless something is messed up */
+		puts("Error: Could not find TLB for FLASH BASE\n");
+		flash_esel = 2;	/* give our best effort to continue */
+	} else {
+		/* invalidate existing TLB entry for flash */
+		disable_tlb(flash_esel);
+	}
 
 	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,
 			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
@@ -169,6 +182,7 @@ int board_early_init_r(void)
 			0, flash_esel+1, BOOKE_PAGESZ_64M, 1);
 #endif
 	board_config_serdes_mux();
+	dsp_ddr_configure();
 	return 0;
 }
 
@@ -212,9 +226,9 @@ int checkboard(void)
 	return 0;
 }
 
-#ifdef CONFIG_TSEC_ENET
 int board_eth_init(bd_t *bis)
 {
+#ifdef CONFIG_TSEC_ENET
 	struct fsl_pq_mdio_info mdio_info;
 	struct tsec_info_struct tsec_info[4];
 	int num = 0;
@@ -235,6 +249,7 @@ int board_eth_init(bd_t *bis)
 
 	fsl_pq_mdio_init(bis, &mdio_info);
 	tsec_eth_init(bis, tsec_info, num);
+#endif
 
 	#ifdef CONFIG_PCI
 	pci_eth_init(bis);
@@ -242,7 +257,6 @@ int board_eth_init(bd_t *bis)
 
 	return 0;
 }
-#endif
 
 #define USBMUX_SEL_MASK		0xc0
 #define USBMUX_SEL_UART2	0xc0
@@ -342,21 +356,30 @@ void fdt_del_node_compat(void *blob, const char *compatible)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup(void *blob, bd_t *bd)
+#ifdef CONFIG_FDT_FIXUP_PARTITIONS
+struct node_info nodes[] = {
+	{ "cfi-flash",			MTD_DEV_TYPE_NOR,  },
+	{ "fsl,ifc-nand",		MTD_DEV_TYPE_NAND, },
+};
+#endif
+int ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
 	phys_size_t size;
 
 	ft_cpu_setup(blob, bd);
 
-	base = getenv_bootm_low();
-	size = getenv_bootm_size();
+	base = env_get_bootm_low();
+	size = env_get_bootm_size();
 
 	#if defined(CONFIG_PCI)
 	FT_FSL_PCI_SETUP;
 	#endif
 
 	fdt_fixup_memory(blob, (u64)base, (u64)size);
+#ifdef CONFIG_FDT_FIXUP_PARTITIONS
+	fdt_fixup_mtdparts(blob, nodes, ARRAY_SIZE(nodes));
+#endif
 
 	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 	u32 porbmsr = in_be32(&gur->porbmsr);
@@ -370,7 +393,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 			/* remove dts usb node */
 			fdt_del_node_compat(blob, "fsl-usb2-dr");
 		} else {
-			fdt_fixup_dr_usb(blob, bd);
+			fsl_fdt_fixup_dr_usb(blob, bd);
 			fdt_del_node_and_alias(blob, "serial2");
 		}
 	}
@@ -399,5 +422,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 			printf("\nRemove sim from hwconfig and reset\n");
 		}
 	}
+
+	return 0;
 }
 #endif

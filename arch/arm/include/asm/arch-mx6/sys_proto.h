@@ -1,59 +1,33 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Stefano Babic, DENX Software Engineering, sbabic@denx.de.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
-#ifndef _SYS_PROTO_H_
-#define _SYS_PROTO_H_
+#ifndef __SYS_PROTO_IMX6_
+#define __SYS_PROTO_IMX6_
 
-#include <asm/imx-common/regs-common.h>
+#include <asm/mach-imx/sys_proto.h>
+#include <asm/arch/iomux.h>
 
-#define MXC_CPU_MX51		0x51
-#define MXC_CPU_MX53		0x53
-#define MXC_CPU_MX6SL		0x60
-#define MXC_CPU_MX6DL		0x61
-#define MXC_CPU_MX6SOLO		0x62
-#define MXC_CPU_MX6Q		0x63
+#define USBPHY_PWD		0x00000000
 
-#define is_soc_rev(rev)	((get_cpu_rev() & 0xFF) - rev)
-u32 get_cpu_rev(void);
-const char *get_imx_type(u32 imxtype);
-unsigned imx_ddr_size(void);
+#define USBPHY_PWD_RXPWDRX	(1 << 20) /* receiver block power down */
 
-void set_vddsoc(u32 mv);
+#define is_usbotg_phy_active(void) (!(readl(USB_PHY0_BASE_ADDR + USBPHY_PWD) & \
+				   USBPHY_PWD_RXPWDRX))
 
-/*
- * Initializes on-chip ethernet controllers.
- * to override, implement board_eth_init()
+int imx6_pcie_toggle_power(void);
+int imx6_pcie_toggle_reset(void);
+
+/**
+ * iomuxc_set_rgmii_io_voltage - set voltage level of RGMII/USB pins
+ *
+ * @param io_vol - the voltage IO level of pins
  */
+static inline void iomuxc_set_rgmii_io_voltage(int io_vol)
+{
+	__raw_writel(io_vol, IOMUXC_SW_PAD_CTL_GRP_DDR_TYPE_RGMII);
+}
 
-int fecmxc_initialize(bd_t *bis);
-u32 get_ahb_clk(void);
-u32 get_periph_clk(void);
-
-int mxs_reset_block(struct mxs_register_32 *reg);
-int mxs_wait_mask_set(struct mxs_register_32 *reg,
-		       uint32_t mask,
-		       unsigned int timeout);
-int mxs_wait_mask_clr(struct mxs_register_32 *reg,
-		       uint32_t mask,
-		       unsigned int timeout);
-#endif
+#endif /* __SYS_PROTO_IMX6_ */

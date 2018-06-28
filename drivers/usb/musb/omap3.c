@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (c) 2009 Wind River Systems, Inc.
  * Tom Rix <Tom.Rix@windriver.com>
@@ -13,21 +14,6 @@
  * Copyright (c) 2009 Texas Instruments
  *
  * ------------------------------------------------------------------------
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <asm/omap_common.h>
@@ -68,7 +54,7 @@ static struct omap3_otg_regs *otg;
 #define OMAP3_OTG_SYSSTATUS_RESETDONE			0x0001
 
 /* OMAP4430 has an internal PHY, use it */
-#ifdef CONFIG_OMAP4430
+#ifdef CONFIG_OMAP44XX
 #define OMAP3_OTG_INTERFSEL_OMAP			0x0000
 #else
 #define OMAP3_OTG_INTERFSEL_OMAP			0x0001
@@ -131,11 +117,11 @@ int musb_platform_init(void)
 		stdby &= ~OMAP3_OTG_FORCESTDBY_STANDBY;
 		writel(stdby, &otg->forcestdby);
 
-#ifdef CONFIG_OMAP3_EVM
+#ifdef CONFIG_TARGET_OMAP3_EVM
 		musb_cfg.extvbus = omap3_evm_need_extvbus();
 #endif
 
-#ifdef CONFIG_OMAP4430
+#ifdef CONFIG_OMAP44XX
 		u32 *usbotghs_control =
 			(u32 *)((*ctrl)->control_usbotghs_ctrl);
 		*usbotghs_control = 0x15;

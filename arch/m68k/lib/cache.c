@@ -1,24 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -49,12 +32,13 @@ void icache_enable(void)
 
 	*cf_icache_status = 1;
 
-#ifdef CONFIG_CF_V4
+#if defined(CONFIG_CF_V4) || defined(CONFIG_CF_V4E)
 	__asm__ __volatile__("movec %0, %%acr2"::"r"(CONFIG_SYS_CACHE_ACR2));
 	__asm__ __volatile__("movec %0, %%acr3"::"r"(CONFIG_SYS_CACHE_ACR3));
-#elif defined(CONFIG_CF_V4e)
+#if defined(CONFIG_CF_V4E)
 	__asm__ __volatile__("movec %0, %%acr6"::"r"(CONFIG_SYS_CACHE_ACR6));
 	__asm__ __volatile__("movec %0, %%acr7"::"r"(CONFIG_SYS_CACHE_ACR7));
+#endif
 #else
 	__asm__ __volatile__("movec %0, %%acr0"::"r"(CONFIG_SYS_CACHE_ACR0));
 	__asm__ __volatile__("movec %0, %%acr1"::"r"(CONFIG_SYS_CACHE_ACR1));
@@ -70,16 +54,16 @@ void icache_disable(void)
 	*cf_icache_status = 0;
 	icache_invalid();
 
-#ifdef CONFIG_CF_V4
+#if defined(CONFIG_CF_V4) || defined(CONFIG_CF_V4E)
 	__asm__ __volatile__("movec %0, %%acr2"::"r"(temp));
 	__asm__ __volatile__("movec %0, %%acr3"::"r"(temp));
-#elif defined(CONFIG_CF_V4e)
+#if defined(CONFIG_CF_V4E)
 	__asm__ __volatile__("movec %0, %%acr6"::"r"(temp));
 	__asm__ __volatile__("movec %0, %%acr7"::"r"(temp));
+#endif
 #else
 	__asm__ __volatile__("movec %0, %%acr0"::"r"(temp));
 	__asm__ __volatile__("movec %0, %%acr1"::"r"(temp));
-
 #endif
 }
 
@@ -103,13 +87,13 @@ void dcache_enable(void)
 	dcache_invalid();
 	*cf_dcache_status = 1;
 
-#ifdef CONFIG_CF_V4
+#if defined(CONFIG_CF_V4) || defined(CONFIG_CF_V4E)
 	__asm__ __volatile__("movec %0, %%acr0"::"r"(CONFIG_SYS_CACHE_ACR0));
 	__asm__ __volatile__("movec %0, %%acr1"::"r"(CONFIG_SYS_CACHE_ACR1));
-#elif defined(CONFIG_CF_V4e)
+#if defined(CONFIG_CF_V4E)
 	__asm__ __volatile__("movec %0, %%acr4"::"r"(CONFIG_SYS_CACHE_ACR4));
 	__asm__ __volatile__("movec %0, %%acr5"::"r"(CONFIG_SYS_CACHE_ACR5));
-
+#endif
 #endif
 
 	__asm__ __volatile__("movec %0, %%cacr"::"r"(CONFIG_SYS_CACHE_DCACR));
@@ -124,19 +108,19 @@ void dcache_disable(void)
 
 	__asm__ __volatile__("movec %0, %%cacr"::"r"(temp));
 
-#ifdef CONFIG_CF_V4
+#if defined(CONFIG_CF_V4) || defined(CONFIG_CF_V4E)
 	__asm__ __volatile__("movec %0, %%acr0"::"r"(temp));
 	__asm__ __volatile__("movec %0, %%acr1"::"r"(temp));
-#elif defined(CONFIG_CF_V4e)
+#if defined(CONFIG_CF_V4E)
 	__asm__ __volatile__("movec %0, %%acr4"::"r"(temp));
 	__asm__ __volatile__("movec %0, %%acr5"::"r"(temp));
-
+#endif
 #endif
 }
 
 void dcache_invalid(void)
 {
-#ifdef CONFIG_CF_V4
+#if defined(CONFIG_CF_V4) || defined(CONFIG_CF_V4E)
 	u32 temp;
 
 	temp = CONFIG_SYS_DCACHE_INV;
@@ -147,4 +131,13 @@ void dcache_invalid(void)
 
 	__asm__ __volatile__("movec %0, %%cacr"::"r"(temp));
 #endif
+}
+
+__weak void invalidate_dcache_range(unsigned long start, unsigned long stop)
+{
+	/* An empty stub, real implementation should be in platform code */
+}
+__weak void flush_dcache_range(unsigned long start, unsigned long stop)
+{
+	/* An empty stub, real implementation should be in platform code */
 }

@@ -1,23 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009 Freescale Semiconductor, Inc.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -25,18 +8,19 @@
 #include <asm/gpio.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/iomux-mx51.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/crm_regs.h>
 #include <asm/arch/clock.h>
-#include <asm/imx-common/mx5_video.h>
+#include <asm/mach-imx/mx5_video.h>
 #include <i2c.h>
+#include <input.h>
 #include <mmc.h>
 #include <fsl_esdhc.h>
 #include <power/pmic.h>
 #include <fsl_pmic.h>
 #include <mc13892.h>
-#include <usb/ehci-fsl.h>
+#include <usb/ehci-ci.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -128,7 +112,7 @@ static void setup_iomux_spi(void)
 #ifdef CONFIG_USB_EHCI_MX5
 #define MX51EVK_USBH1_HUB_RST	IMX_GPIO_NR(1, 7)
 #define MX51EVK_USBH1_STP	IMX_GPIO_NR(1, 27)
-#define MX51EVK_USB_CLK_EN_B	IMX_GPIO_NR(2, 2)
+#define MX51EVK_USB_CLK_EN_B	IMX_GPIO_NR(2, 1)
 #define MX51EVK_USB_PHY_RESET	IMX_GPIO_NR(2, 5)
 
 static void setup_usb_h1(void)
@@ -190,7 +174,7 @@ static void power_init(void)
 	struct pmic *p;
 	int ret;
 
-	ret = pmic_init(I2C_PMIC);
+	ret = pmic_init(CONFIG_FSL_PMIC_BUS);
 	if (ret)
 		return;
 
@@ -336,7 +320,7 @@ int board_mmc_init(bd_t *bis)
 	};
 
 	u32 index;
-	s32 status = 0;
+	int ret;
 
 	esdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC_CLK);
 	esdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
@@ -356,11 +340,13 @@ int board_mmc_init(bd_t *bis)
 			printf("Warning: you configured more ESDHC controller"
 				"(%d) as supported by the board(2)\n",
 				CONFIG_SYS_FSL_ESDHC_NUM);
-			return status;
+			return -EINVAL;
 		}
-		status |= fsl_esdhc_initialize(bis, &esdhc_cfg[index]);
+		ret = fsl_esdhc_initialize(bis, &esdhc_cfg[index]);
+		if (ret)
+			return ret;
 	}
-	return status;
+	return 0;
 }
 #endif
 

@@ -1,24 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2002
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -186,14 +169,7 @@ DECLARE_GLOBAL_DATA_PTR;
  */
 static void move64(const unsigned long long *src, unsigned long long *dest)
 {
-#if defined(CONFIG_MPC8260) || defined(CONFIG_MPC824X)
-	asm ("lfd  0, 0(3)\n\t" /* fpr0	  =  *scr	*/
-	 "stfd 0, 0(4)"		/* *dest  =  fpr0	*/
-	 : : : "fr0" );		/* Clobbers fr0		*/
-    return;
-#else
 	*dest = *src;
-#endif
 }
 
 /*
@@ -250,7 +226,7 @@ static int memory_post_dataline(unsigned long long * pmem)
 			hi = (temp64>>32) & 0xffffffff;
 			lo = temp64 & 0xffffffff;
 
-			post_log("Memory (date line) error at %08x, "
+			post_log("Memory (data line) error at %08x, "
 				  "wrote %08x%08x, read %08x%08x !\n",
 					  pmem, pathi, patlo, hi, lo);
 			ret = -1;

@@ -29,28 +29,27 @@
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 #endif
 
-#if defined(CONFIG_CMD_FAT) && !defined(CONFIG_FS_FAT)
-#define CONFIG_FS_FAT
+/* Console I/O Buffer Size */
+#ifndef CONFIG_SYS_CBSIZE
+#if defined(CONFIG_CMD_KGDB)
+#define CONFIG_SYS_CBSIZE	1024
+#else
+#define CONFIG_SYS_CBSIZE	256
+#endif
 #endif
 
-#if (defined(CONFIG_CMD_EXT4) || defined(CONFIG_CMD_EXT2)) && \
-						!defined(CONFIG_FS_EXT4)
-#define CONFIG_FS_EXT4
+#ifndef CONFIG_SYS_PBSIZE
+#define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
 #endif
 
-#if defined(CONFIG_CMD_EXT4_WRITE) && !defined(CONFIG_EXT4_WRITE)
-#define CONFIG_EXT4_WRITE
+#ifndef CONFIG_SYS_MAXARGS
+#define CONFIG_SYS_MAXARGS	16
 #endif
 
-/* Rather than repeat this expression each time, add a define for it */
-#if defined(CONFIG_CMD_IDE) || \
-	defined(CONFIG_CMD_SATA) || \
-	defined(CONFIG_CMD_SCSI) || \
-	defined(CONFIG_CMD_USB) || \
-	defined(CONFIG_CMD_PART) || \
-	defined(CONFIG_MMC) || \
-	defined(CONFIG_SYSTEMACE)
-#define HAVE_BLOCK_DEVICE
+#ifdef CONFIG_DM_I2C
+# ifdef CONFIG_SYS_I2C
+#  error "Cannot define CONFIG_SYS_I2C when CONFIG_DM_I2C is used"
+# endif
 #endif
 
 #endif	/* __CONFIG_FALLBACKS_H */

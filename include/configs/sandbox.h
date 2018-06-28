@@ -1,22 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (c) 2011 The Chromium OS Authors.
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #ifndef __CONFIG_H
@@ -24,7 +8,6 @@
 
 #ifdef FTRACE
 #define CONFIG_TRACE
-#define CONFIG_CMD_TRACE
 #define CONFIG_TRACE_BUFFER_SIZE	(16 << 20)
 #define CONFIG_TRACE_EARLY_SIZE		(8 << 20)
 #define CONFIG_TRACE_EARLY
@@ -32,97 +15,128 @@
 
 #endif
 
-#define CONFIG_BOOTSTAGE
-#define CONFIG_BOOTSTAGE_REPORT
+#ifndef CONFIG_SPL_BUILD
+#define CONFIG_IO_TRACE
+#endif
 
-/* Number of bits in a C 'long' on this architecture */
-#define CONFIG_SANDBOX_BITS_PER_LONG	64
+#ifndef CONFIG_TIMER
+#define CONFIG_SYS_TIMER_RATE		1000000
+#endif
 
-#define CONFIG_OF_CONTROL
-#define CONFIG_OF_HOSTFILE
-#define CONFIG_OF_LIBFDT
 #define CONFIG_LMB
-#define CONFIG_FIT
-#define CONFIG_FIT_SIGNATURE
-#define CONFIG_RSA
-#define CONFIG_CMD_FDT
 
-#define CONFIG_FS_FAT
-#define CONFIG_FS_EXT4
-#define CONFIG_EXT4_WRITE
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_EXT4
-#define CONFIG_CMD_EXT4_WRITE
-
-#define CONFIG_SYS_VSNPRINTF
-
-#define CONFIG_CMD_GPIO
-#define CONFIG_SANDBOX_GPIO
-#define CONFIG_SANDBOX_GPIO_COUNT	20
+#define CONFIG_HOST_MAX_DEVICES 4
 
 /*
- * Size of malloc() pool, although we don't actually use this yet.
+ * Size of malloc() pool, before and after relocation
  */
-#define CONFIG_SYS_MALLOC_LEN		(4 << 20)	/* 4MB  */
+#define CONFIG_MALLOC_F_ADDR		0x0010000
+#define CONFIG_SYS_MALLOC_LEN		(32 << 20)	/* 32MB  */
 
-#define CONFIG_SYS_PROMPT		"=>"	/* Command Prompt */
-#define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_LONGHELP			/* #undef to save memory */
 #define CONFIG_SYS_CBSIZE		1024	/* Console I/O Buffer Size */
 
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE (CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS	16
-
 /* turn on command-line edit/c/auto */
-#define CONFIG_CMDLINE_EDITING
-#define CONFIG_COMMAND_HISTORY
-#define CONFIG_AUTO_COMPLETE
 
 #define CONFIG_ENV_SIZE		8192
-#define CONFIG_ENV_IS_NOWHERE
 
-#define CONFIG_SYS_HZ			1000
+/* SPI - enable all SPI flash types for testing purposes */
+
+#define CONFIG_I2C_EDID
 
 /* Memory things - we don't really want a memory test */
 #define CONFIG_SYS_LOAD_ADDR		0x00000000
 #define CONFIG_SYS_MEMTEST_START	0x00100000
 #define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + 0x1000)
-#define CONFIG_PHYS_64BIT
-#define CONFIG_SYS_FDT_LOAD_ADDR	0x1000000
+#define CONFIG_SYS_FDT_LOAD_ADDR	        0x100
+
+#define CONFIG_PHYSMEM
 
 /* Size of our emulated memory */
 #define CONFIG_SYS_SDRAM_BASE		0
 #define CONFIG_SYS_SDRAM_SIZE		(128 << 20)
-#define CONFIG_SYS_TEXT_BASE		0
 #define CONFIG_SYS_MONITOR_BASE	0
 #define CONFIG_NR_DRAM_BANKS		1
 
-#define CONFIG_BAUDRATE			115200
 #define CONFIG_SYS_BAUDRATE_TABLE	{4800, 9600, 19200, 38400, 57600,\
 					115200}
-#define CONFIG_SANDBOX_SERIAL
 
-#define CONFIG_SYS_NO_FLASH
+#define BOOT_TARGET_DEVICES(func) \
+	func(HOST, host, 1) \
+	func(HOST, host, 0)
 
-/* include default commands */
-#include <config_cmd_default.h>
+#include <config_distro_bootcmd.h>
 
-/* We don't have networking support yet */
-#undef CONFIG_CMD_NET
-#undef CONFIG_CMD_NFS
+#define CONFIG_KEEP_SERVERADDR
+#define CONFIG_UDP_CHECKSUM
+#define CONFIG_TIMESTAMP
+#define CONFIG_BOOTP_DNS2
+#define CONFIG_BOOTP_SEND_HOSTNAME
+#define CONFIG_BOOTP_SERVERIP
+#define CONFIG_IP_DEFRAG
 
-#define CONFIG_CMD_HASH
-#define CONFIG_HASH_VERIFY
-#define CONFIG_SHA1
-#define CONFIG_SHA256
+#ifndef SANDBOX_NO_SDL
+#define CONFIG_SANDBOX_SDL
+#endif
 
-#define CONFIG_CMD_SANDBOX
+/* LCD and keyboard require SDL support */
+#ifdef CONFIG_SANDBOX_SDL
+#define LCD_BPP			LCD_COLOR16
+#define CONFIG_LCD_BMP_RLE8
+#define CONFIG_VIDEO_BMP_RLE8
+#define CONFIG_SPLASH_SCREEN_ALIGN
 
-#define CONFIG_BOOTARGS ""
+#define CONFIG_KEYBOARD
 
-#define CONFIG_EXTRA_ENV_SETTINGS	"stdin=serial\0" \
-					"stdout=serial\0" \
-					"stderr=serial\0"
+#define SANDBOX_SERIAL_SETTINGS		"stdin=serial,cros-ec-keyb,usbkbd\0" \
+					"stdout=serial,vidconsole\0" \
+					"stderr=serial,vidconsole\0"
+#else
+#define SANDBOX_SERIAL_SETTINGS		"stdin=serial\0" \
+					"stdout=serial,vidconsole\0" \
+					"stderr=serial,vidconsole\0"
+#endif
+
+#define SANDBOX_ETH_SETTINGS		"ethaddr=00:00:11:22:33:44\0" \
+					"eth1addr=00:00:11:22:33:45\0" \
+					"eth3addr=00:00:11:22:33:46\0" \
+					"eth5addr=00:00:11:22:33:47\0" \
+					"ipaddr=1.2.3.4\0"
+
+#define MEM_LAYOUT_ENV_SETTINGS \
+	"bootm_size=0x10000000\0" \
+	"kernel_addr_r=0x1000000\0" \
+	"fdt_addr_r=0xc00000\0" \
+	"ramdisk_addr_r=0x2000000\0" \
+	"scriptaddr=0x1000\0" \
+	"pxefile_addr_r=0x2000\0"
+
+#define CONFIG_EXTRA_ENV_SETTINGS \
+	SANDBOX_SERIAL_SETTINGS \
+	SANDBOX_ETH_SETTINGS \
+	BOOTENV \
+	MEM_LAYOUT_ENV_SETTINGS
+
+#define CONFIG_GZIP_COMPRESSED
+#define CONFIG_BZIP2
+
+#ifndef CONFIG_SPL_BUILD
+#define CONFIG_SYS_IDE_MAXBUS		1
+#define CONFIG_SYS_ATA_IDE0_OFFSET	0
+#define CONFIG_SYS_IDE_MAXDEVICE	2
+#define CONFIG_SYS_ATA_BASE_ADDR	0x100
+#define CONFIG_SYS_ATA_DATA_OFFSET	0
+#define CONFIG_SYS_ATA_REG_OFFSET	1
+#define CONFIG_SYS_ATA_ALT_OFFSET	2
+#define CONFIG_SYS_ATA_STRIDE		4
+#endif
+
+#define CONFIG_SCSI_AHCI_PLAT
+#define CONFIG_SYS_SCSI_MAX_DEVICE	2
+#define CONFIG_SYS_SCSI_MAX_SCSI_ID	8
+#define CONFIG_SYS_SCSI_MAX_LUN		4
+
+#define CONFIG_SYS_SATA_MAX_DEVICE	2
+
+#define CONFIG_MISC_INIT_F
 
 #endif

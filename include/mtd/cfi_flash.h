@@ -1,25 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- *
  */
 
 #ifndef __CFI_FLASH_H__
@@ -79,6 +61,7 @@
 
 #define FLASH_OFFSET_MANUFACTURER_ID	0x00
 #define FLASH_OFFSET_DEVICE_ID		0x01
+#define FLASH_OFFSET_LOWER_SW_BITS	0x0C
 #define FLASH_OFFSET_DEVICE_ID2		0x0E
 #define FLASH_OFFSET_DEVICE_ID3		0x0F
 #define FLASH_OFFSET_CFI		0x55
@@ -122,10 +105,10 @@
 #define NUM_ERASE_REGIONS	4 /* max. number of erase regions */
 
 typedef union {
-	unsigned char c;
-	unsigned short w;
-	unsigned long l;
-	unsigned long long ll;
+	u8 w8;
+	u16 w16;
+	u32 w32;
+	u64 w64;
 } cfiword_t;
 
 /* CFI standard query structure */
@@ -182,7 +165,19 @@ extern int cfi_flash_num_flash_banks;
 #define CFI_MAX_FLASH_BANKS	CONFIG_SYS_MAX_FLASH_BANKS
 #endif
 
-void flash_write_cmd(flash_info_t * info, flash_sect_t sect,
-		     uint offset, u32 cmd);
+phys_addr_t cfi_flash_bank_addr(int i);
+unsigned long cfi_flash_bank_size(int i);
+void flash_cmd_reset(flash_info_t *info);
+
+#ifdef CONFIG_CFI_FLASH_USE_WEAK_ACCESSORS
+void flash_write8(u8 value, void *addr);
+void flash_write16(u16 value, void *addr);
+void flash_write32(u32 value, void *addr);
+void flash_write64(u64 value, void *addr);
+u8 flash_read8(void *addr);
+u16 flash_read16(void *addr);
+u32 flash_read32(void *addr);
+u64 flash_read64(void *addr);
+#endif
 
 #endif /* __CFI_FLASH_H__ */

@@ -1,23 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2009 Freescale Semiconductor, Inc.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #ifndef __ARCH_ARM_MACH_MX51_CRM_REGS_H__
@@ -56,7 +39,7 @@ struct mxc_ccm_reg {
 	u32 cs1cdr;
 	u32 cs2cdr;
 	u32 cdcdr;	/* 0x0030 */
-	u32 chscdr;
+	u32 chsccdr;
 	u32 cscdr2;
 	u32 cscdr3;
 	u32 cscdr4;	/* 0x0040 */
@@ -226,6 +209,14 @@ struct mxc_ccm_reg {
 #define MXC_CCM_CSCMR1_SSI_EXT2_COM_CLK_SEL		(0x1 << 1)
 #define MXC_CCM_CSCMR1_SSI_EXT1_COM_CLK_SEL		0x1
 
+/* Define the bits in register CSCMR2 */
+#define MXC_CCM_CSCMR2_DI0_CLK_SEL_OFFSET		26
+#define MXC_CCM_CSCMR2_DI0_CLK_SEL_MASK		(0x7 << 26)
+#define MXC_CCM_CSCMR2_DI0_CLK_SEL(v)		(((v) & 0x7) << 26)
+#define MXC_CCM_CSCMR2_DI0_CLK_SEL_RD(r)	(((r) >> 26) & 0x7)
+
+#define MXC_CCM_CSCMR2_DI0_CLK_SEL_LDB_DI0_CLK 5
+
 /* Define the bits in register CSCDR2 */
 #define MXC_CCM_CSCDR2_CSPI_CLK_PRED_OFFSET		25
 #define MXC_CCM_CSCDR2_CSPI_CLK_PRED_MASK		(0x7 << 25)
@@ -320,6 +311,9 @@ struct mxc_ccm_reg {
 
 /* Define the bits in register CCDR */
 #define MXC_CCM_CCDR_IPU_HS_MASK			(0x1 << 17)
+
+/* Define the bits in register CGPR */
+#define MXC_CCM_CGPR_EFUSE_PROG_SUPPLY_GATE		(1 << 4)
 
 /* Define the bits in register CCGRx */
 #define MXC_CCM_CCGR_CG_MASK				0x3

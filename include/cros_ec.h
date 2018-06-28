@@ -1,24 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Chromium OS cros_ec driver
  *
  * Copyright (c) 2012 The Chromium OS Authors.
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #ifndef _CROS_EC_H
@@ -26,29 +10,15 @@
 
 #include <linux/compiler.h>
 #include <ec_commands.h>
-#include <fdtdec.h>
 #include <cros_ec_message.h>
-
-/* Which interface is the device on? */
-enum cros_ec_interface_t {
-	CROS_EC_IF_NONE,
-	CROS_EC_IF_SPI,
-	CROS_EC_IF_I2C,
-	CROS_EC_IF_LPC,	/* Intel Low Pin Count interface */
-};
+#include <asm/gpio.h>
+#include <dm/of_extra.h>
 
 /* Our configuration information */
 struct cros_ec_dev {
-	enum cros_ec_interface_t interface;
-	struct spi_slave *spi;		/* Our SPI slave, if using SPI */
-	int node;                       /* Our node */
-	int parent_node;		/* Our parent node (interface) */
-	unsigned int cs;		/* Our chip select */
-	unsigned int addr;		/* Device address (for I2C) */
-	unsigned int bus_num;		/* Bus number (for I2C) */
-	unsigned int max_frequency;	/* Maximum interface frequency */
-	struct fdt_gpio_state ec_int;	/* GPIO used as EC interrupt line */
-	int cmd_version_is_supported;   /* Device supports command versions */
+	struct udevice *dev;		/* Transport device */
+	struct gpio_desc ec_int;	/* GPIO used as EC interrupt line */
+	int protocol_version;           /* Protocol version to use */
 	int optimise_flash_write;	/* Don't write erased flash blocks */
 
 	/*
@@ -78,6 +48,17 @@ struct mbkp_keyscan {
 	uint8_t data[CROS_EC_KEYSCAN_COLS];
 };
 
+/* Holds information about the Chrome EC */
+struct fdt_cros_ec {
+	struct fmap_entry flash;	/* Address and size of EC flash */
+	/*
+	 * Byte value of erased flash, or -1 if not known. It is normally
+	 * 0xff but some flash devices use 0 (e.g. STM32Lxxx)
+	 */
+	int flash_erase_value;
+	struct fmap_entry region[EC_FLASH_REGION_COUNT];
+};
+
 /**
  * Read the ID of the CROS-EC device
  *
@@ -99,7 +80,7 @@ int cros_ec_read_id(struct cros_ec_dev *dev, char *id, int maxlen);
  * @param scan		Place to put the scan results
  * @return 0 if ok, -1 on error
  */
-int cros_ec_scan_keyboard(struct cros_ec_dev *dev, struct mbkp_keyscan *scan);
+int cros_ec_scan_keyboard(struct udevice *dev, struct mbkp_keyscan *scan);
 
 /**
  * Read which image is currently running on the CROS-EC device.
@@ -143,7 +124,7 @@ int cros_ec_reboot(struct cros_ec_dev *dev, enum ec_reboot_cmd cmd,
  * @param dev		CROS-EC device
  * @return 0 if no interrupt is pending
  */
-int cros_ec_interrupt_pending(struct cros_ec_dev *dev);
+int cros_ec_interrupt_pending(struct udevice *dev);
 
 enum {
 	CROS_EC_OK,
@@ -155,7 +136,7 @@ enum {
 };
 
 /**
- * Set up the Chromium OS matrix keyboard protocol
+ * Initialise the Chromium OS EC driver
  *
  * @param blob		Device tree blob containing setup information
  * @param cros_ecp        Returns pointer to the cros_ec device, or NULL if none
@@ -172,7 +153,7 @@ int cros_ec_init(const void *blob, struct cros_ec_dev **cros_ecp);
  * @param info		Place to put the info structure
  */
 int cros_ec_info(struct cros_ec_dev *dev,
-		struct ec_response_cros_ec_info *info);
+		struct ec_response_mkbp_info *info);
 
 /**
  * Read the host event flags
@@ -236,85 +217,18 @@ int cros_ec_flash_update_rw(struct cros_ec_dev *dev,
  */
 struct cros_ec_dev *board_get_cros_ec_dev(void);
 
+struct dm_cros_ec_ops {
+	int (*check_version)(struct udevice *dev);
+	int (*command)(struct udevice *dev, uint8_t cmd, int cmd_version,
+		       const uint8_t *dout, int dout_len,
+		       uint8_t **dinp, int din_len);
+	int (*packet)(struct udevice *dev, int out_bytes, int in_bytes);
+};
 
-/* Internal interfaces */
-int cros_ec_i2c_init(struct cros_ec_dev *dev, const void *blob);
-int cros_ec_spi_init(struct cros_ec_dev *dev, const void *blob);
-int cros_ec_lpc_init(struct cros_ec_dev *dev, const void *blob);
+#define dm_cros_ec_get_ops(dev) \
+		((struct dm_cros_ec_ops *)(dev)->driver->ops)
 
-/**
- * Read information from the fdt for the i2c cros_ec interface
- *
- * @param dev		CROS-EC device
- * @param blob		Device tree blob
- * @return 0 if ok, -1 if we failed to read all required information
- */
-int cros_ec_i2c_decode_fdt(struct cros_ec_dev *dev, const void *blob);
-
-/**
- * Read information from the fdt for the spi cros_ec interface
- *
- * @param dev		CROS-EC device
- * @param blob		Device tree blob
- * @return 0 if ok, -1 if we failed to read all required information
- */
-int cros_ec_spi_decode_fdt(struct cros_ec_dev *dev, const void *blob);
-
-/**
- * Check whether the LPC interface supports new-style commands.
- *
- * LPC has its own way of doing this, which involves checking LPC values
- * visible to the host. Do this, and update dev->cmd_version_is_supported
- * accordingly.
- *
- * @param dev		CROS-EC device to check
- */
-int cros_ec_lpc_check_version(struct cros_ec_dev *dev);
-
-/**
- * Send a command to an I2C CROS-EC device and return the reply.
- *
- * This rather complicated function deals with sending both old-style and
- * new-style commands. The old ones have just a command byte and arguments.
- * The new ones have version, command, arg-len, [args], chksum so are 3 bytes
- * longer.
- *
- * The device's internal input/output buffers are used.
- *
- * @param dev		CROS-EC device
- * @param cmd		Command to send (EC_CMD_...)
- * @param cmd_version	Version of command to send (EC_VER_...)
- * @param dout          Output data (may be NULL If dout_len=0)
- * @param dout_len      Size of output data in bytes
- * @param dinp          Returns pointer to response data
- * @param din_len       Maximum size of response in bytes
- * @return number of bytes in response, or -1 on error
- */
-int cros_ec_i2c_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
-		     const uint8_t *dout, int dout_len,
-		     uint8_t **dinp, int din_len);
-
-/**
- * Send a command to a LPC CROS-EC device and return the reply.
- *
- * The device's internal input/output buffers are used.
- *
- * @param dev		CROS-EC device
- * @param cmd		Command to send (EC_CMD_...)
- * @param cmd_version	Version of command to send (EC_VER_...)
- * @param dout          Output data (may be NULL If dout_len=0)
- * @param dout_len      Size of output data in bytes
- * @param dinp          Returns pointer to response data
- * @param din_len       Maximum size of response in bytes
- * @return number of bytes in response, or -1 on error
- */
-int cros_ec_lpc_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
-		     const uint8_t *dout, int dout_len,
-		     uint8_t **dinp, int din_len);
-
-int cros_ec_spi_command(struct cros_ec_dev *dev, uint8_t cmd, int cmd_version,
-		     const uint8_t *dout, int dout_len,
-		     uint8_t **dinp, int din_len);
+int cros_ec_register(struct udevice *dev);
 
 /**
  * Dump a block of data for a command.
@@ -334,15 +248,6 @@ void cros_ec_dump_data(const char *name, int cmd, const uint8_t *data, int len);
  * @return checksum value (0 to 255)
  */
 int cros_ec_calc_checksum(const uint8_t *data, int size);
-
-/**
- * Decode a flash region parameter
- *
- * @param argc	Number of params remaining
- * @param argv	List of remaining parameters
- * @return flash region (EC_FLASH_REGION_...) or -1 on error
- */
-int cros_ec_decode_region(int argc, char * const argv[]);
 
 int cros_ec_flash_erase(struct cros_ec_dev *dev, uint32_t offset,
 		uint32_t size);
@@ -364,6 +269,17 @@ int cros_ec_flash_erase(struct cros_ec_dev *dev, uint32_t offset,
  */
 int cros_ec_flash_read(struct cros_ec_dev *dev, uint8_t *data, uint32_t offset,
 		    uint32_t size);
+
+/**
+ * Read back flash parameters
+ *
+ * This function reads back parameters of the flash as reported by the EC
+ *
+ * @param dev  Pointer to device
+ * @param info Pointer to output flash info struct
+ */
+int cros_ec_read_flashinfo(struct cros_ec_dev *dev,
+			  struct ec_response_flash_info *info);
 
 /**
  * Write data to the flash
@@ -435,7 +351,7 @@ int cros_ec_read_build_info(struct cros_ec_dev *dev, char **strp);
  * @param state		new state of the LDO/FET : EC_LDO_STATE_ON|OFF
  * @return 0 if ok, -1 on error
  */
-int cros_ec_set_ldo(struct cros_ec_dev *dev, uint8_t index, uint8_t state);
+int cros_ec_set_ldo(struct udevice *dev, uint8_t index, uint8_t state);
 
 /**
  * Read back a LDO / FET current state.
@@ -445,5 +361,44 @@ int cros_ec_set_ldo(struct cros_ec_dev *dev, uint8_t index, uint8_t state);
  * @param state		current state of the LDO/FET : EC_LDO_STATE_ON|OFF
  * @return 0 if ok, -1 on error
  */
-int cros_ec_get_ldo(struct cros_ec_dev *dev, uint8_t index, uint8_t *state);
+int cros_ec_get_ldo(struct udevice *dev, uint8_t index, uint8_t *state);
+
+/**
+ * Get access to the error reported when cros_ec_board_init() was called
+ *
+ * This permits delayed reporting of the EC error if it failed during
+ * early init.
+ *
+ * @return error (0 if there was no error, -ve if there was an error)
+ */
+int cros_ec_get_error(void);
+
+/**
+ * Returns information from the FDT about the Chrome EC flash
+ *
+ * @param dev		Device to read from
+ * @param config	Structure to use to return information
+ */
+int cros_ec_decode_ec_flash(struct udevice *dev, struct fdt_cros_ec *config);
+
+/**
+ * Check the current keyboard state, in case recovery mode is requested.
+ * This function is for sandbox only.
+ *
+ * @param ec		CROS-EC device
+ */
+void cros_ec_check_keyboard(struct cros_ec_dev *dev);
+
+struct i2c_msg;
+/*
+ * Tunnel an I2C transfer to the EC
+ *
+ * @param dev		CROS-EC device
+ * @param port		The remote port on EC to use
+ * @param msg		List of messages to transfer
+ * @param nmsgs		Number of messages to transfer
+ */
+int cros_ec_i2c_tunnel(struct udevice *dev, int port, struct i2c_msg *msg,
+		       int nmsgs);
+
 #endif

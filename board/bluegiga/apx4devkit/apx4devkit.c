@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * Bluegiga APX4 Development Kit
  *
@@ -10,24 +11,12 @@
  * Based on m28evk.c:
  * Copyright (C) 2011 Marek Vasut <marek.vasut@gmail.com>
  * on behalf of DENX Software Engineering GmbH
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 
 #include <common.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
+#include <asm/setup.h>
 #include <asm/arch/imx-regs.h>
 #include <asm/arch/iomux-mx28.h>
 #include <asm/arch/clock.h>
@@ -143,8 +132,8 @@ void get_board_serial(struct tag_serialnr *serialnr)
 #ifdef CONFIG_REVISION_TAG
 u32 get_board_rev(void)
 {
-	if (getenv("revision#") != NULL)
-		return simple_strtoul(getenv("revision#"), NULL, 10);
+	if (env_get("revision#") != NULL)
+		return simple_strtoul(env_get("revision#"), NULL, 10);
 	return 0;
 }
 #endif

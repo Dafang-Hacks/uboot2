@@ -1,19 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2011-2012 Freescale Semiconductor, Inc.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 or later as published by the Free Software Foundation.
  */
 
 #include <common.h>
 #include <i2c.h>
 #include <hwconfig.h>
+#include <fsl_ddr.h>
 #include <asm/mmu.h>
-#include <asm/fsl_ddr_sdram.h>
-#include <asm/fsl_ddr_dimm_params.h>
+#include <fsl_ddr_sdram.h>
+#include <fsl_ddr_dimm_params.h>
 #include <asm/fsl_law.h>
-#include <../arch/powerpc/cpu/mpc8xxx/ddr/ddr.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -31,20 +28,20 @@ dimm_params_t ddr_raw_timing = {
 	.edc_config = 2,	/* ECC */
 	.burst_lengths_bitmask = 0x0c,
 
-	.tCKmin_X_ps = 1071,
-	.caslat_X = 0x2fe << 4,	/* 5,6,7,8,9,10,11,13 */
-	.tAA_ps = 13910,
-	.tWR_ps = 15000,
-	.tRCD_ps = 13910,
-	.tRRD_ps = 6000,
-	.tRP_ps = 13910,
-	.tRAS_ps = 34000,
-	.tRC_ps = 48910,
-	.tRFC_ps = 260000,
-	.tWTR_ps = 7500,
-	.tRTP_ps = 7500,
+	.tckmin_x_ps = 1071,
+	.caslat_x = 0x2fe << 4,	/* 5,6,7,8,9,10,11,13 */
+	.taa_ps = 13910,
+	.twr_ps = 15000,
+	.trcd_ps = 13910,
+	.trrd_ps = 6000,
+	.trp_ps = 13910,
+	.tras_ps = 34000,
+	.trc_ps = 48910,
+	.trfc_ps = 260000,
+	.twtr_ps = 7500,
+	.trtp_ps = 7500,
 	.refresh_rate_ps = 7800000,
-	.tFAW_ps = 35000,
+	.tfaw_ps = 35000,
 };
 
 int fsl_ddr_get_dimm_params(dimm_params_t *pdimm,
@@ -71,7 +68,7 @@ struct board_specific_parameters {
 	u32 wrlvl_ctl_3;
 	u32 cpo;
 	u32 write_data_delay;
-	u32 force_2T;
+	u32 force_2t;
 };
 
 /*
@@ -129,7 +126,7 @@ void fsl_ddr_board_options(memctl_options_t *popts,
 				popts->wrlvl_start = pbsp->wrlvl_start;
 				popts->wrlvl_ctl_2 = pbsp->wrlvl_ctl_2;
 				popts->wrlvl_ctl_3 = pbsp->wrlvl_ctl_3;
-				popts->twoT_en = pbsp->force_2T;
+				popts->twot_en = pbsp->force_2t;
 				goto found;
 			}
 			pbsp_highest = pbsp;
@@ -146,7 +143,7 @@ void fsl_ddr_board_options(memctl_options_t *popts,
 		popts->write_data_delay = pbsp_highest->write_data_delay;
 		popts->clk_adjust = pbsp_highest->clk_adjust;
 		popts->wrlvl_start = pbsp_highest->wrlvl_start;
-		popts->twoT_en = pbsp_highest->force_2T;
+		popts->twot_en = pbsp_highest->force_2t;
 	} else {
 		panic("DIMM is not supported by this board");
 	}
@@ -173,21 +170,27 @@ found:
 	/* DHC_EN =1, ODT = 75 Ohm */
 	popts->ddr_cdr1 = DDR_CDR1_DHC_EN | DDR_CDR1_ODT(DDR_CDR_ODT_75ohm);
 	popts->ddr_cdr2 = DDR_CDR2_ODT(DDR_CDR_ODT_75ohm);
+
+	/* optimize cpo for erratum A-009942 */
+	popts->cpo_sample = 0x3e;
 }
 
-phys_size_t initdram(int board_type)
+int dram_init(void)
 {
 	phys_size_t dram_size;
 
+#if defined(CONFIG_SPL_BUILD) || !defined(CONFIG_RAMBOOT_PBL)
 	puts("Initializing....using SPD\n");
-
 	dram_size = fsl_ddr_sdram();
-
+#else
+	dram_size =  fsl_ddr_sdram_size();
+#endif
 	dram_size = setup_ddr_tlbs(dram_size / 0x100000);
 	dram_size *= 0x100000;
 
-	puts("    DDR: ");
-	return dram_size;
+	gd->ram_size = dram_size;
+
+	return 0;
 }
 
 unsigned long long step_assign_addresses(fsl_ddr_info_t *pinfo,
@@ -211,7 +214,7 @@ unsigned long long step_assign_addresses(fsl_ddr_info_t *pinfo,
 
 		debug("rank density is 0x%llx, ctlr density is 0x%llx\n",
 		      rank_density, ctlr_density);
-		for (i = CONFIG_NUM_DDR_CONTROLLERS - 1; i >= 0; i--) {
+		for (i = CONFIG_SYS_NUM_DDR_CTLRS - 1; i >= 0; i--) {
 			switch (pinfo->memctl_opts[i].memctl_interleaving_mode) {
 			case FSL_DDR_CACHE_LINE_INTERLEAVING:
 			case FSL_DDR_PAGE_INTERLEAVING:
@@ -235,7 +238,7 @@ unsigned long long step_assign_addresses(fsl_ddr_info_t *pinfo,
 		 * Simple linear assignment if memory
 		 * controllers are not interleaved.
 		 */
-		for (i = CONFIG_NUM_DDR_CONTROLLERS - 1; i >= 0; i--) {
+		for (i = CONFIG_SYS_NUM_DDR_CTLRS - 1; i >= 0; i--) {
 			total_ctlr_mem = 0;
 			pinfo->common_timing_params[i].base_address =
 						current_mem_base;

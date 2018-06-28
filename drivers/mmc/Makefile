@@ -1,76 +1,65 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
 # (C) Copyright 2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-#
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
-#
 
-include $(TOPDIR)/config.mk
+obj-y += mmc.o
+obj-$(CONFIG_$(SPL_)DM_MMC) += mmc-uclass.o
+obj-$(CONFIG_$(SPL_)MMC_WRITE) += mmc_write.o
 
-LIB	:= $(obj)libmmc.o
-
-
-COBJS-$(CONFIG_BFIN_SDH) += bfin_sdh.o
-COBJS-$(CONFIG_DAVINCI_MMC) += davinci_mmc.o
-COBJS-$(CONFIG_FSL_ESDHC) += fsl_esdhc.o
-COBJS-$(CONFIG_FTSDC010) += ftsdc010_mci.o
-ifndef CONFIG_SPL_BUILD
-COBJS-$(CONFIG_GENERIC_MMC) += mmc.o
-else
-COBJS-$(CONFIG_GENERIC_MMC) += mmc_spl.o
-endif
-COBJS-$(CONFIG_GENERIC_ATMEL_MCI) += gen_atmel_mci.o
-COBJS-$(CONFIG_MMC_SPI) += mmc_spi.o
-COBJS-$(CONFIG_ARM_PL180_MMCI) += arm_pl180_mmci.o
-COBJS-$(CONFIG_MV_SDHCI) += mv_sdhci.o
-COBJS-$(CONFIG_MXC_MMC) += mxcmmc.o
-COBJS-$(CONFIG_MXS_MMC) += mxsmmc.o
-COBJS-$(CONFIG_OMAP_HSMMC) += omap_hsmmc.o
-COBJS-$(CONFIG_PXA_MMC_GENERIC) += pxa_mmc_gen.o
-COBJS-$(CONFIG_SDHCI) += sdhci.o
-COBJS-$(CONFIG_BCM2835_SDHCI) += bcm2835_sdhci.o
-COBJS-$(CONFIG_S5P_SDHCI) += s5p_sdhci.o
-COBJS-$(CONFIG_SH_MMCIF) += sh_mmcif.o
-COBJS-$(CONFIG_SPEAR_SDHCI) += spear_sdhci.o
-COBJS-$(CONFIG_TEGRA_MMC) += tegra_mmc.o
-COBJS-$(CONFIG_DWMMC) += dw_mmc.o
-COBJS-$(CONFIG_EXYNOS_DWMMC) += exynos_dw_mmc.o
-COBJS-$(CONFIG_ZYNQ_SDHCI) += zynq_sdhci.o
-COBJS-$(CONFIG_JZ_MMC) += jz_mmc.o
-ifndef CONFIG_SPL_BUILD
-COBJS-$(CONFIG_GENERIC_MMC) += mmc_write.o
+ifndef CONFIG_$(SPL_)BLK
+obj-y += mmc_legacy.o
 endif
 
-COBJS	:= $(COBJS-y)
-SRCS	:= $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(COBJS))
+obj-$(CONFIG_SUPPORT_EMMC_BOOT) += mmc_boot.o
 
-all:	$(LIB)
+ifdef CONFIG_SPL_BUILD
+obj-$(CONFIG_SPL_MMC_BOOT) += fsl_esdhc_spl.o
+endif
 
-$(LIB): $(obj).depend $(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
+obj-$(CONFIG_ARM_PL180_MMCI) += arm_pl180_mmci.o
+obj-$(CONFIG_MMC_DAVINCI)		+= davinci_mmc.o
+obj-$(CONFIG_MMC_DW)			+= dw_mmc.o
+obj-$(CONFIG_MMC_DW_EXYNOS)		+= exynos_dw_mmc.o
+obj-$(CONFIG_MMC_DW_K3)			+= hi6220_dw_mmc.o
+obj-$(CONFIG_MMC_DW_ROCKCHIP)		+= rockchip_dw_mmc.o
+obj-$(CONFIG_MMC_DW_SOCFPGA)		+= socfpga_dw_mmc.o
+obj-$(CONFIG_FSL_ESDHC) += fsl_esdhc.o
+obj-$(CONFIG_FTSDC010) += ftsdc010_mci.o
+obj-$(CONFIG_GENERIC_ATMEL_MCI) += gen_atmel_mci.o
+obj-$(CONFIG_MMC_MESON_GX) += meson_gx_mmc.o
+obj-$(CONFIG_MMC_SPI) += mmc_spi.o
+obj-$(CONFIG_MVEBU_MMC) += mvebu_mmc.o
+obj-$(CONFIG_MMC_OMAP_HS)		+= omap_hsmmc.o
+obj-$(CONFIG_MMC_MXC)			+= mxcmmc.o
+obj-$(CONFIG_MMC_MXS)			+= mxsmmc.o
+obj-$(CONFIG_MMC_PCI)			+= pci_mmc.o
+obj-$(CONFIG_PXA_MMC_GENERIC) += pxa_mmc_gen.o
+obj-$(CONFIG_SUPPORT_EMMC_RPMB) += rpmb.o
+obj-$(CONFIG_MMC_SANDBOX)		+= sandbox_mmc.o
+obj-$(CONFIG_SH_MMCIF) += sh_mmcif.o
+obj-$(CONFIG_SH_SDHI) += sh_sdhi.o
+obj-$(CONFIG_STM32_SDMMC2) += stm32_sdmmc2.o
 
-#########################################################################
+# SDHCI
+obj-$(CONFIG_MMC_SDHCI)			+= sdhci.o
+obj-$(CONFIG_MMC_SDHCI_ATMEL)		+= atmel_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_BCM2835)		+= bcm2835_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_CADENCE)		+= sdhci-cadence.o
+obj-$(CONFIG_MMC_SDHCI_KONA)		+= kona_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_MSM)		+= msm_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_MV)		+= mv_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_PIC32)		+= pic32_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_ROCKCHIP)	+= rockchip_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_S5P)		+= s5p_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_SPEAR)		+= spear_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_STI) 		+= sti_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_TANGIER)		+= tangier_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_TEGRA)		+= tegra_mmc.o
+obj-$(CONFIG_MMC_SDHCI_XENON)		+= xenon_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_ZYNQ)		+= zynq_sdhci.o
 
-# defines $(obj).depend target
-include $(SRCTREE)/rules.mk
-
-sinclude $(obj).depend
-
-#########################################################################
+obj-$(CONFIG_MMC_SUNXI)			+= sunxi_mmc.o
+obj-$(CONFIG_MMC_UNIPHIER)		+= tmio-common.o uniphier-sd.o
+obj-$(CONFIG_RENESAS_SDHI)		+= tmio-common.o renesas-sdhi.o
+obj-$(CONFIG_MMC_BCM2835)		+= bcm2835_sdhost.o

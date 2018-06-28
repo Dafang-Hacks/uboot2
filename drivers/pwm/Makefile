@@ -1,47 +1,17 @@
+# SPDX-License-Identifier: GPL-2.0+
 #
-# Copyright 2000-2008
+# (C) Copyright 2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
-# See file CREDITS for list of people who contributed to this
-# project.
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of
-# the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
-# MA 02111-1307 USA
-#
+# (C) Copyright 2001
+# Erik Theisen, Wave 7 Optics, etheisen@mindspring.com.
 
-include $(TOPDIR)/config.mk
+#ccflags-y += -DDEBUG
 
-LIB	:= $(obj)libpwm.o
+obj-$(CONFIG_DM_PWM)		+= pwm-uclass.o
 
-COBJS-$(CONFIG_JZ_PWM)	+= jz_pwm.o
-
-COBJS	:= $(COBJS-y)
-SRCS	:= $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(COBJS))
-
-all:	$(LIB)
-
-$(LIB): $(obj).depend $(OBJS)
-	$(call cmd_link_o_target, $(OBJS))
-
-
-#########################################################################
-
-# defines $(obj).depend target
-include $(SRCTREE)/rules.mk
-
-sinclude $(obj).depend
-
-########################################################################
+obj-$(CONFIG_PWM_EXYNOS)	+= exynos_pwm.o
+obj-$(CONFIG_PWM_IMX)		+= pwm-imx.o pwm-imx-util.o
+obj-$(CONFIG_PWM_ROCKCHIP)	+= rk_pwm.o
+obj-$(CONFIG_PWM_SANDBOX)	+= sandbox_pwm.o
+obj-$(CONFIG_PWM_TEGRA)		+= tegra_pwm.o

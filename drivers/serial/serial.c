@@ -1,24 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
@@ -90,9 +73,6 @@ static int on_baudrate(const char *name, const char *value, enum env_op op,
 		}
 
 		gd->baudrate = baudrate;
-#if defined(CONFIG_PPC) || defined(CONFIG_MCF52x2)
-		gd->bd->bi_baudrate = baudrate;
-#endif
 
 		serial_setbrg();
 
@@ -128,52 +108,15 @@ U_BOOT_ENV_CALLBACK(baudrate, on_baudrate);
 	void name(void)						\
 		__attribute__((weak, alias("serial_null")));
 
-serial_initfunc(mpc8xx_serial_initialize);
-serial_initfunc(ns16550_serial_initialize);
-serial_initfunc(pxa_serial_initialize);
-serial_initfunc(s3c24xx_serial_initialize);
-serial_initfunc(s5p_serial_initialize);
-serial_initfunc(zynq_serial_initalize);
-serial_initfunc(bfin_serial_initialize);
-serial_initfunc(bfin_jtag_initialize);
-serial_initfunc(mpc512x_serial_initialize);
-serial_initfunc(uartlite_serial_initialize);
-serial_initfunc(au1x00_serial_initialize);
-serial_initfunc(asc_serial_initialize);
-serial_initfunc(jz_serial_initialize);
-serial_initfunc(mpc5xx_serial_initialize);
-serial_initfunc(mpc8260_scc_serial_initialize);
-serial_initfunc(mpc8260_smc_serial_initialize);
-serial_initfunc(mpc85xx_serial_initialize);
-serial_initfunc(iop480_serial_initialize);
-serial_initfunc(leon2_serial_initialize);
-serial_initfunc(leon3_serial_initialize);
-serial_initfunc(marvell_serial_initialize);
-serial_initfunc(amirix_serial_initialize);
-serial_initfunc(bmw_serial_initialize);
-serial_initfunc(cogent_serial_initialize);
-serial_initfunc(cpci750_serial_initialize);
-serial_initfunc(evb64260_serial_initialize);
-serial_initfunc(ml2_serial_initialize);
-serial_initfunc(sconsole_serial_initialize);
-serial_initfunc(p3mx_serial_initialize);
-serial_initfunc(altera_jtag_serial_initialize);
-serial_initfunc(altera_serial_initialize);
 serial_initfunc(atmel_serial_initialize);
-serial_initfunc(lpc32xx_serial_initialize);
+serial_initfunc(au1x00_serial_initialize);
 serial_initfunc(mcf_serial_initialize);
-serial_initfunc(oc_serial_initialize);
-serial_initfunc(sandbox_serial_initialize);
-serial_initfunc(clps7111_serial_initialize);
-serial_initfunc(imx_serial_initialize);
-serial_initfunc(ixp_serial_initialize);
-serial_initfunc(ks8695_serial_initialize);
-serial_initfunc(lh7a40x_serial_initialize);
-serial_initfunc(max3100_serial_initialize);
+serial_initfunc(mpc85xx_serial_initialize);
+serial_initfunc(mpc8xx_serial_initialize);
 serial_initfunc(mxc_serial_initialize);
+serial_initfunc(ns16550_serial_initialize);
 serial_initfunc(pl01x_serial_initialize);
-serial_initfunc(s3c44b0_serial_initialize);
-serial_initfunc(sa1100_serial_initialize);
+serial_initfunc(pxa_serial_initialize);
 serial_initfunc(sh_serial_initialize);
 
 /**
@@ -220,55 +163,60 @@ void serial_register(struct serial_device *dev)
  */
 void serial_initialize(void)
 {
-	mpc8xx_serial_initialize();
-	ns16550_serial_initialize();
-	pxa_serial_initialize();
-	s3c24xx_serial_initialize();
-	s5p_serial_initialize();
-	mpc512x_serial_initialize();
-	bfin_serial_initialize();
-	bfin_jtag_initialize();
-	uartlite_serial_initialize();
-	zynq_serial_initalize();
-	au1x00_serial_initialize();
-	asc_serial_initialize();
-	jz_serial_initialize();
-	mpc5xx_serial_initialize();
-	mpc8260_scc_serial_initialize();
-	mpc8260_smc_serial_initialize();
-	mpc85xx_serial_initialize();
-	iop480_serial_initialize();
-	leon2_serial_initialize();
-	leon3_serial_initialize();
-	marvell_serial_initialize();
-	amirix_serial_initialize();
-	bmw_serial_initialize();
-	cogent_serial_initialize();
-	cpci750_serial_initialize();
-	evb64260_serial_initialize();
-	ml2_serial_initialize();
-	sconsole_serial_initialize();
-	p3mx_serial_initialize();
-	altera_jtag_serial_initialize();
-	altera_serial_initialize();
 	atmel_serial_initialize();
-	lpc32xx_serial_initialize();
+	au1x00_serial_initialize();
 	mcf_serial_initialize();
-	oc_serial_initialize();
-	sandbox_serial_initialize();
-	clps7111_serial_initialize();
-	imx_serial_initialize();
-	ixp_serial_initialize();
-	ks8695_serial_initialize();
-	lh7a40x_serial_initialize();
-	max3100_serial_initialize();
+	mpc85xx_serial_initialize();
+	mpc8xx_serial_initialize();
 	mxc_serial_initialize();
+	ns16550_serial_initialize();
 	pl01x_serial_initialize();
-	s3c44b0_serial_initialize();
-	sa1100_serial_initialize();
+	pxa_serial_initialize();
 	sh_serial_initialize();
 
 	serial_assign(default_serial_console()->name);
+}
+
+static int serial_stub_start(struct stdio_dev *sdev)
+{
+	struct serial_device *dev = sdev->priv;
+
+	return dev->start();
+}
+
+static int serial_stub_stop(struct stdio_dev *sdev)
+{
+	struct serial_device *dev = sdev->priv;
+
+	return dev->stop();
+}
+
+static void serial_stub_putc(struct stdio_dev *sdev, const char ch)
+{
+	struct serial_device *dev = sdev->priv;
+
+	dev->putc(ch);
+}
+
+static void serial_stub_puts(struct stdio_dev *sdev, const char *str)
+{
+	struct serial_device *dev = sdev->priv;
+
+	dev->puts(str);
+}
+
+static int serial_stub_getc(struct stdio_dev *sdev)
+{
+	struct serial_device *dev = sdev->priv;
+
+	return dev->getc();
+}
+
+static int serial_stub_tstc(struct stdio_dev *sdev)
+{
+	struct serial_device *dev = sdev->priv;
+
+	return dev->tstc();
 }
 
 /**
@@ -289,12 +237,13 @@ void serial_stdio_init(void)
 		strcpy(dev.name, s->name);
 		dev.flags = DEV_FLAGS_OUTPUT | DEV_FLAGS_INPUT;
 
-		dev.start = s->start;
-		dev.stop = s->stop;
-		dev.putc = s->putc;
-		dev.puts = s->puts;
-		dev.getc = s->getc;
-		dev.tstc = s->tstc;
+		dev.start = serial_stub_start;
+		dev.stop = serial_stub_stop;
+		dev.putc = serial_stub_putc;
+		dev.puts = serial_stub_puts;
+		dev.getc = serial_stub_getc;
+		dev.tstc = serial_stub_tstc;
+		dev.priv = s;
 
 		stdio_register(&dev);
 
@@ -393,6 +342,7 @@ static struct serial_device *get_current(void)
  */
 int serial_init(void)
 {
+	gd->flags |= GD_FLG_SERIAL_READY;
 	return get_current()->start();
 }
 
@@ -504,7 +454,7 @@ static const int bauds[] = CONFIG_SYS_BAUDRATE_TABLE;
  *
  * Do a loopback test of the currently selected serial port. This
  * function is only useful in the context of the POST testing framwork.
- * The serial port is firstly configured into loopback mode and then
+ * The serial port is first configured into loopback mode and then
  * characters are sent through it.
  *
  * Returns 0 on success, value otherwise.
@@ -516,12 +466,11 @@ int uart_post_test(int flags)
 	unsigned char c;
 	int ret, saved_baud, b;
 	struct serial_device *saved_dev, *s;
-	bd_t *bd = gd->bd;
 
 	/* Save current serial state */
 	ret = 0;
 	saved_dev = serial_current;
-	saved_baud = bd->bi_baudrate;
+	saved_baud = gd->baudrate;
 
 	for (s = serial_devices; s; s = s->next) {
 		/* If this driver doesn't support loop back, skip it */
@@ -544,7 +493,7 @@ int uart_post_test(int flags)
 
 		/* Test every available baud rate */
 		for (b = 0; b < ARRAY_SIZE(bauds); ++b) {
-			bd->bi_baudrate = bauds[b];
+			gd->baudrate = bauds[b];
 			serial_setbrg();
 
 			/*
@@ -586,7 +535,7 @@ int uart_post_test(int flags)
  done:
 	/* Restore previous serial state */
 	serial_current = saved_dev;
-	bd->bi_baudrate = saved_baud;
+	gd->baudrate = saved_baud;
 	serial_reinit_all();
 	serial_setbrg();
 

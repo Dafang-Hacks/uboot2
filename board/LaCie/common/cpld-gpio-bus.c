@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * cpld-gpio-bus.c: provides support for the CPLD GPIO bus found on some LaCie
  * boards (as the 2Big/5Big Network v2 and the 2Big NAS). This parallel GPIO
@@ -8,11 +9,6 @@
  * Mostly this bus is used to configure the LEDs on LaCie boards.
  *
  * Copyright (C) 2013 Simon Guinot <simon.guinot@sequanux.org>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
  */
 
 #include <asm/arch/gpio.h>

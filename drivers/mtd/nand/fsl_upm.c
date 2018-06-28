@@ -1,19 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * FSL UPM NAND driver
  *
  * Copyright (C) 2007 MontaVista Software, Inc.
  *                    Anton Vorontsov <avorontsov@ru.mvista.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
  */
 
 #include <config.h>
 #include <common.h>
 #include <asm/io.h>
-#include <asm/errno.h>
+#include <linux/errno.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/fsl_upm.h>
 #include <nand.h>
@@ -67,8 +63,8 @@ static void fun_wait(struct fsl_upm_nand *fun)
 #if CONFIG_SYS_NAND_MAX_CHIPS > 1
 static void fun_select_chip(struct mtd_info *mtd, int chip_nr)
 {
-	struct nand_chip *chip = mtd->priv;
-	struct fsl_upm_nand *fun = chip->priv;
+	struct nand_chip *chip = mtd_to_nand(mtd);
+	struct fsl_upm_nand *fun = nand_get_controller_data(chip);
 
 	if (chip_nr >= 0) {
 		fun->chip_nr = chip_nr;
@@ -82,8 +78,8 @@ static void fun_select_chip(struct mtd_info *mtd, int chip_nr)
 
 static void fun_cmd_ctrl(struct mtd_info *mtd, int cmd, unsigned int ctrl)
 {
-	struct nand_chip *chip = mtd->priv;
-	struct fsl_upm_nand *fun = chip->priv;
+	struct nand_chip *chip = mtd_to_nand(mtd);
+	struct fsl_upm_nand *fun = nand_get_controller_data(chip);
 	void __iomem *io_addr;
 	u32 mar;
 
@@ -115,10 +111,10 @@ static void fun_cmd_ctrl(struct mtd_info *mtd, int cmd, unsigned int ctrl)
 	fsl_upm_run_pattern(&fun->upm, fun->width, io_addr, mar);
 
 	/*
-         * Some boards/chips needs this.  At least the MPC8360E-RDK
-         * needs it.  Probably weird chip, because I don't see any
-         * need for this on MPC8555E + Samsung K9F1G08U0A.  Usually
-         * here are 0-2 unexpected busy states per block read.
+	 * Some boards/chips needs this.  At least the MPC8360E-RDK
+	 * needs it.  Probably weird chip, because I don't see any
+	 * need for this on MPC8555E + Samsung K9F1G08U0A.  Usually
+	 * here are 0-2 unexpected busy states per block read.
 	 */
 	if (fun->wait_flags & FSL_UPM_WAIT_RUN_PATTERN)
 		fun_wait(fun);
@@ -126,7 +122,7 @@ static void fun_cmd_ctrl(struct mtd_info *mtd, int cmd, unsigned int ctrl)
 
 static u8 upm_nand_read_byte(struct mtd_info *mtd)
 {
-	struct nand_chip *chip = mtd->priv;
+	struct nand_chip *chip = mtd_to_nand(mtd);
 
 	return in_8(chip->IO_ADDR_R);
 }
@@ -134,8 +130,8 @@ static u8 upm_nand_read_byte(struct mtd_info *mtd)
 static void upm_nand_write_buf(struct mtd_info *mtd, const u_char *buf, int len)
 {
 	int i;
-	struct nand_chip *chip = mtd->priv;
-	struct fsl_upm_nand *fun = chip->priv;
+	struct nand_chip *chip = mtd_to_nand(mtd);
+	struct fsl_upm_nand *fun = nand_get_controller_data(chip);
 
 	for (i = 0; i < len; i++) {
 		out_8(chip->IO_ADDR_W, buf[i]);
@@ -150,29 +146,16 @@ static void upm_nand_write_buf(struct mtd_info *mtd, const u_char *buf, int len)
 static void upm_nand_read_buf(struct mtd_info *mtd, u_char *buf, int len)
 {
 	int i;
-	struct nand_chip *chip = mtd->priv;
+	struct nand_chip *chip = mtd_to_nand(mtd);
 
 	for (i = 0; i < len; i++)
 		buf[i] = in_8(chip->IO_ADDR_R);
 }
 
-static int upm_nand_verify_buf(struct mtd_info *mtd, const u_char *buf, int len)
-{
-	int i;
-	struct nand_chip *chip = mtd->priv;
-
-	for (i = 0; i < len; i++) {
-		if (buf[i] != in_8(chip->IO_ADDR_R))
-			return -EFAULT;
-	}
-
-	return 0;
-}
-
 static int nand_dev_ready(struct mtd_info *mtd)
 {
-	struct nand_chip *chip = mtd->priv;
-	struct fsl_upm_nand *fun = chip->priv;
+	struct nand_chip *chip = mtd_to_nand(mtd);
+	struct fsl_upm_nand *fun = nand_get_controller_data(chip);
 
 	return fun->dev_ready(fun->chip_nr);
 }
@@ -184,7 +167,7 @@ int fsl_upm_nand_init(struct nand_chip *chip, struct fsl_upm_nand *fun)
 
 	fun->last_ctrl = NAND_CLE;
 
-	chip->priv = fun;
+	nand_set_controller_data(chip, fun);
 	chip->chip_delay = fun->chip_delay;
 	chip->ecc.mode = NAND_ECC_SOFT;
 	chip->cmd_ctrl = fun_cmd_ctrl;
@@ -194,7 +177,6 @@ int fsl_upm_nand_init(struct nand_chip *chip, struct fsl_upm_nand *fun)
 	chip->read_byte = upm_nand_read_byte;
 	chip->read_buf = upm_nand_read_buf;
 	chip->write_buf = upm_nand_write_buf;
-	chip->verify_buf = upm_nand_verify_buf;
 	if (fun->dev_ready)
 		chip->dev_ready = nand_dev_ready;
 

@@ -1,23 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Stefano Babic <sbabic@denx.de>
  *
  * Author: Hardy Weng <hardy.weng@technexion.com>
  *
  * Copyright (C) 2010 TechNexion Ltd.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc.
  */
 
 #ifndef _MT_VENTOUX_H_
@@ -351,7 +338,7 @@ const omap3_sysinfo sysinfo = {
 			/* gpio_10 */\
 	MUX_VAL(CP(SYS_CLKOUT2),	(IEN  | PTU | EN  | M0)) \
 	/* JTAG */\
-	MUX_VAL(CP(JTAG_nTRST),		(IEN  | PTD | DIS | M0)) \
+	MUX_VAL(CP(JTAG_NTRST),		(IEN  | PTD | DIS | M0)) \
 	MUX_VAL(CP(JTAG_TCK),		(IEN  | PTD | DIS | M0)) \
 	MUX_VAL(CP(JTAG_TMS),		(IEN  | PTD | DIS | M0)) \
 	MUX_VAL(CP(JTAG_TDI),		(IEN  | PTD | DIS | M0)) \

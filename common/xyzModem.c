@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: eCos-2.0
 /*
  *==========================================================================
  *
@@ -5,40 +6,6 @@
  *
  *      RedBoot stream handler for xyzModem protocol
  *
- *==========================================================================
- *####ECOSGPLCOPYRIGHTBEGIN####
- * -------------------------------------------
- * This file is part of eCos, the Embedded Configurable Operating System.
- * Copyright (C) 1998, 1999, 2000, 2001, 2002 Red Hat, Inc.
- * Copyright (C) 2002 Gary Thomas
- *
- * eCos is free software; you can redistribute it and/or modify it under
- * the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 or (at your option) any later version.
- *
- * eCos is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with eCos; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
- *
- * As a special exception, if other files instantiate templates or use macros
- * or inline functions from this file, or you compile this file and link it
- * with other works to produce a work based on this file, this file does not
- * by itself cause the resulting work to be covered by the GNU General Public
- * License. However the source code for this file must still be made available
- * in accordance with section (3) of the GNU General Public License.
- *
- * This exception does not invalidate any other reasons why a work based on
- * this file might be covered by the GNU General Public License.
- *
- * Alternative licenses for eCos may be arranged by contacting Red Hat, Inc.
- * at http: *sources.redhat.com/ecos/ecos-license/
- * -------------------------------------------
- *####ECOSGPLCOPYRIGHTEND####
  *==========================================================================
  *#####DESCRIPTIONBEGIN####
  *
@@ -71,25 +38,17 @@
 #define CAN 0x18
 #define EOF 0x1A		/* ^Z for DOS officionados */
 
-#define USE_YMODEM_LENGTH
-
 /* Data & state local to the protocol */
 static struct
 {
-#ifdef REDBOOT
-  hal_virtual_comm_table_t *__chan;
-#else
   int *__chan;
-#endif
   unsigned char pkt[1024], *bufp;
   unsigned char blk, cblk, crc1, crc2;
   unsigned char next_blk;	/* Expected block */
   int len, mode, total_retries;
   int total_SOH, total_STX, total_CAN;
   bool crc_mode, at_eof, tx_ack;
-#ifdef USE_YMODEM_LENGTH
   unsigned long file_length, read_length;
-#endif
 } xyz;
 
 #define xyzModem_CHAR_TIMEOUT            2000	/* 2 seconds */
@@ -98,17 +57,16 @@ static struct
 #define xyzModem_CAN_COUNT                3	/* Wait for 3 CAN before quitting */
 
 
-#ifndef REDBOOT			/*SB */
 typedef int cyg_int32;
 static int
 CYGACC_COMM_IF_GETC_TIMEOUT (char chan, char *c)
 {
-#define DELAY 20
-  unsigned long counter = 0;
-  while (!tstc () && (counter < xyzModem_CHAR_TIMEOUT * 1000 / DELAY))
+
+  ulong now = get_timer(0);
+  while (!tstc ())
     {
-      udelay (DELAY);
-      counter++;
+      if (get_timer(now) > xyzModem_CHAR_TIMEOUT)
+        break;
     }
   if (tstc ())
     {
@@ -188,17 +146,7 @@ parse_num (char *s, unsigned long *val, char **es, char *delim)
       if (_is_hex (c) && ((digit = _from_hex (c)) < radix))
 	{
 	  /* Valid digit */
-#ifdef CYGPKG_HAL_MIPS
-	  /* FIXME: tx49 compiler generates 0x2539018 for MUL which */
-	  /* isn't any good. */
-	  if (16 == radix)
-	    result = result << 4;
-	  else
-	    result = 10 * result;
-	  result += digit;
-#else
 	  result = (result * radix) + digit;
-#endif
 	}
       else
 	{
@@ -222,54 +170,15 @@ parse_num (char *s, unsigned long *val, char **es, char *delim)
   return true;
 }
 
-#endif
 
-#define USE_SPRINTF
 #ifdef DEBUG
-#ifndef USE_SPRINTF
-/*
- * Note: this debug setup only works if the target platform has two serial ports
- * available so that the other one (currently only port 1) can be used for debug
- * messages.
- */
-static int
-zm_dprintf (char *fmt, ...)
-{
-  int cur_console;
-  va_list args;
-
-  va_start (args, fmt);
-#ifdef REDBOOT
-  cur_console =
-    CYGACC_CALL_IF_SET_CONSOLE_COMM
-    (CYGNUM_CALL_IF_SET_COMM_ID_QUERY_CURRENT);
-  CYGACC_CALL_IF_SET_CONSOLE_COMM (1);
-#endif
-  diag_vprintf (fmt, args);
-#ifdef REDBOOT
-  CYGACC_CALL_IF_SET_CONSOLE_COMM (cur_console);
-#endif
-}
-
-static void
-zm_flush (void)
-{
-}
-
-#else
 /*
  * Note: this debug setup works by storing the strings in a fixed buffer
  */
-#define FINAL
-#ifdef FINAL
-static char *zm_out = (char *) 0x00380000;
-static char *zm_out_start = (char *) 0x00380000;
-#else
-static char zm_buf[8192];
-static char *zm_out = zm_buf;
-static char *zm_out_start = zm_buf;
+static char zm_debug_buf[8192];
+static char *zm_out = zm_debug_buf;
+static char *zm_out_start = zm_debug_buf;
 
-#endif
 static int
 zm_dprintf (char *fmt, ...)
 {
@@ -285,23 +194,13 @@ zm_dprintf (char *fmt, ...)
 static void
 zm_flush (void)
 {
-#ifdef REDBOOT
-  char *p = zm_out_start;
-  while (*p)
-    mon_write_char (*p++);
-#endif
   zm_out = zm_out_start;
 }
-#endif
 
 static void
 zm_dump_buf (void *buf, int len)
 {
-#ifdef REDBOOT
-  diag_vdump_buf_with_offset (zm_dprintf, buf, len, 0);
-#else
 
-#endif
 }
 
 static unsigned char zm_buf[2048];
@@ -478,7 +377,7 @@ xyzModem_get_hdr (void)
   /* Verify checksum/CRC */
   if (xyz.crc_mode)
     {
-      cksum = cyg_crc16 (xyz.pkt, xyz.len);
+      cksum = crc16_ccitt(0, xyz.pkt, xyz.len);
       if (cksum != ((xyz.crc1 << 8) | xyz.crc2))
 	{
 	  ZM_DEBUG (zm_dprintf ("CRC error - recvd: %02x%02x, computed: %x\n",
@@ -508,9 +407,6 @@ xyzModem_get_hdr (void)
 int
 xyzModem_stream_open (connection_info_t * info, int *err)
 {
-#ifdef REDBOOT
-  int console_chan;
-#endif
   int stat = 0;
   int retries = xyzModem_MAX_RETRIES;
   int crc_retries = xyzModem_MAX_RETRIES_WITH_CRC;
@@ -524,29 +420,9 @@ xyzModem_stream_open (connection_info_t * info, int *err)
     }
 #endif
 
-#ifdef REDBOOT
-  /* Set up the I/O channel.  Note: this allows for using a different port in the future */
-  console_chan =
-    CYGACC_CALL_IF_SET_CONSOLE_COMM
-    (CYGNUM_CALL_IF_SET_COMM_ID_QUERY_CURRENT);
-  if (info->chan >= 0)
-    {
-      CYGACC_CALL_IF_SET_CONSOLE_COMM (info->chan);
-    }
-  else
-    {
-      CYGACC_CALL_IF_SET_CONSOLE_COMM (console_chan);
-    }
-  xyz.__chan = CYGACC_CALL_IF_CONSOLE_PROCS ();
-
-  CYGACC_CALL_IF_SET_CONSOLE_COMM (console_chan);
-  CYGACC_COMM_IF_CONTROL (*xyz.__chan, __COMMCTL_SET_TIMEOUT,
-			  xyzModem_CHAR_TIMEOUT);
-#else
 /* TODO: CHECK ! */
   int dummy = 0;
   xyz.__chan = &dummy;
-#endif
   xyz.len = 0;
   xyz.crc_mode = true;
   xyz.at_eof = false;
@@ -556,10 +432,8 @@ xyzModem_stream_open (connection_info_t * info, int *err)
   xyz.total_SOH = 0;
   xyz.total_STX = 0;
   xyz.total_CAN = 0;
-#ifdef USE_YMODEM_LENGTH
   xyz.read_length = 0;
   xyz.file_length = 0;
-#endif
 
   CYGACC_COMM_IF_PUTC (*xyz.__chan, (xyz.crc_mode ? 'C' : NAK));
 
@@ -578,12 +452,10 @@ xyzModem_stream_open (connection_info_t * info, int *err)
 	  /* Y-modem file information header */
 	  if (xyz.blk == 0)
 	    {
-#ifdef USE_YMODEM_LENGTH
 	      /* skip filename */
 	      while (*xyz.bufp++);
 	      /* get the length */
 	      parse_num ((char *) xyz.bufp, &xyz.file_length, NULL, " ");
-#endif
 	      /* The rest of the file name data block quietly discarded */
 	      xyz.tx_ack = true;
 	    }
@@ -636,13 +508,8 @@ xyzModem_stream_read (char *buf, int size, int *err)
 				("ACK block %d (%d)\n", xyz.blk, __LINE__));
 		      xyz.next_blk = (xyz.next_blk + 1) & 0xFF;
 
-#if defined(xyzModem_zmodem) || defined(USE_YMODEM_LENGTH)
 		      if (xyz.mode == xyzModem_xmodem || xyz.file_length == 0)
 			{
-#else
-		      if (1)
-			{
-#endif
 			  /* Data blocks can be padded with ^Z (EOF) characters */
 			  /* This code tries to detect and remove them */
 			  if ((xyz.bufp[xyz.len - 1] == EOF) &&
@@ -657,7 +524,6 @@ xyzModem_stream_read (char *buf, int size, int *err)
 			    }
 			}
 
-#ifdef USE_YMODEM_LENGTH
 		      /*
 		       * See if accumulated length exceeds that of the file.
 		       * If so, reduce size (i.e., cut out pad bytes)
@@ -672,7 +538,6 @@ xyzModem_stream_read (char *buf, int size, int *err)
 			      xyz.len -= (xyz.read_length - xyz.file_length);
 			    }
 			}
-#endif
 		      break;
 		    }
 		  else if (xyz.blk == ((xyz.next_blk - 1) & 0xFF))
@@ -791,7 +656,8 @@ xyzModem_stream_terminate (bool abort, int (*getc) (void))
        * If we don't eat it now, RedBoot will think the user typed it.
        */
       ZM_DEBUG (zm_dprintf ("Trailing gunk:\n"));
-      while ((c = (*getc) ()) > -1);
+      while ((c = (*getc) ()) > -1)
+        ;
       ZM_DEBUG (zm_dprintf ("\n"));
       /*
        * Make a small delay to give terminal programs like minicom
@@ -840,10 +706,3 @@ xyzModem_error (int err)
 /*
  * RedBoot interface
  */
-#if 0				/* SB */
-GETC_IO_FUNCS (xyzModem_io, xyzModem_stream_open, xyzModem_stream_close,
-	       xyzModem_stream_terminate, xyzModem_stream_read,
-	       xyzModem_error);
-RedBoot_load (xmodem, xyzModem_io, false, false, xyzModem_xmodem);
-RedBoot_load (ymodem, xyzModem_io, false, false, xyzModem_ymodem);
-#endif

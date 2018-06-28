@@ -1,34 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2009
  * Vipin Kumar, ST Micoelectronics, vipin.kumar@st.com.
  *
  * Copyright (C) 2012 Stefan Roese <sr@denx.de>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <common.h>
+#include <micrel.h>
 #include <nand.h>
 #include <netdev.h>
 #include <phy.h>
 #include <rtc.h>
 #include <asm/io.h>
+#include <asm/mach-types.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/spr_defs.h>
 #include <asm/arch/spr_misc.h>
@@ -83,31 +68,69 @@ void board_nand_init(void)
 		fsmc_nand_init(nand);
 }
 
-int designware_board_phy_init(struct eth_device *dev, int phy_addr,
-	int (*mii_write)(struct eth_device *, u8, u8, u16),
-	int dw_reset_phy(struct eth_device *))
+int board_phy_config(struct phy_device *phydev)
 {
-	/* Extended PHY control 1, select GMII */
-	mii_write(dev, phy_addr, 23, 0x0020);
+	unsigned short id1, id2;
 
-	/* Software reset necessary after GMII mode selction */
-	dw_reset_phy(dev);
+	/* check whether KSZ9031 or AR8035 has to be configured */
+	id1 = phy_read(phydev, MDIO_DEVAD_NONE, 2);
+	id2 = phy_read(phydev, MDIO_DEVAD_NONE, 3);
 
-	/* Enable extended page register access */
-	mii_write(dev, phy_addr, 31, 0x0001);
+	if ((id1 == 0x22) && ((id2 & 0xFFF0) == 0x1620)) {
+		/* PHY configuration for Micrel KSZ9031 */
+		printf("PHY KSZ9031 detected - ");
 
-	/* 17e: Enhanced LED behavior, needs to be written twice */
-	mii_write(dev, phy_addr, 17, 0x09ff);
-	mii_write(dev, phy_addr, 17, 0x09ff);
+		phy_write(phydev, MDIO_DEVAD_NONE, MII_CTRL1000, 0x1c00);
 
-	/* 16e: Enhanced LED method select */
-	mii_write(dev, phy_addr, 16, 0xe0ea);
+		/* control data pad skew - devaddr = 0x02, register = 0x04 */
+		ksz9031_phy_extended_write(phydev, 0x02,
+					   MII_KSZ9031_EXT_RGMII_CTRL_SIG_SKEW,
+					   MII_KSZ9031_MOD_DATA_NO_POST_INC,
+					   0x0000);
+		/* rx data pad skew - devaddr = 0x02, register = 0x05 */
+		ksz9031_phy_extended_write(phydev, 0x02,
+					   MII_KSZ9031_EXT_RGMII_RX_DATA_SKEW,
+					   MII_KSZ9031_MOD_DATA_NO_POST_INC,
+					   0x0000);
+		/* tx data pad skew - devaddr = 0x02, register = 0x05 */
+		ksz9031_phy_extended_write(phydev, 0x02,
+					   MII_KSZ9031_EXT_RGMII_TX_DATA_SKEW,
+					   MII_KSZ9031_MOD_DATA_NO_POST_INC,
+					   0x0000);
+		/* gtx and rx clock pad skew - devaddr = 0x02, reg = 0x08 */
+		ksz9031_phy_extended_write(phydev, 0x02,
+					   MII_KSZ9031_EXT_RGMII_CLOCK_SKEW,
+					   MII_KSZ9031_MOD_DATA_NO_POST_INC,
+					   0x03FF);
+	} else {
+		/* PHY configuration for Vitesse VSC8641 */
+		printf("PHY VSC8641 detected - ");
 
-	/* Disable extended page register access */
-	mii_write(dev, phy_addr, 31, 0x0000);
+		/* Extended PHY control 1, select GMII */
+		phy_write(phydev, MDIO_DEVAD_NONE, 23, 0x0020);
 
-	/* Enable clock output pin */
-	mii_write(dev, phy_addr, 18, 0x0049);
+		/* Software reset necessary after GMII mode selction */
+		phy_reset(phydev);
+
+		/* Enable extended page register access */
+		phy_write(phydev, MDIO_DEVAD_NONE, 31, 0x0001);
+
+		/* 17e: Enhanced LED behavior, needs to be written twice */
+		phy_write(phydev, MDIO_DEVAD_NONE, 17, 0x09ff);
+		phy_write(phydev, MDIO_DEVAD_NONE, 17, 0x09ff);
+
+		/* 16e: Enhanced LED method select */
+		phy_write(phydev, MDIO_DEVAD_NONE, 16, 0xe0ea);
+
+		/* Disable extended page register access */
+		phy_write(phydev, MDIO_DEVAD_NONE, 31, 0x0000);
+
+		/* Enable clock output pin */
+		phy_write(phydev, MDIO_DEVAD_NONE, 18, 0x0049);
+	}
+
+	if (phydev->drv->config)
+		phydev->drv->config(phydev);
 
 	return 0;
 }
@@ -116,7 +139,7 @@ int board_eth_init(bd_t *bis)
 {
 	int ret = 0;
 
-	if (designware_initialize(0, CONFIG_SPEAR_ETHBASE, CONFIG_PHY_ADDR,
+	if (designware_initialize(CONFIG_SPEAR_ETHBASE,
 				  PHY_INTERFACE_MODE_GMII) >= 0)
 		ret++;
 

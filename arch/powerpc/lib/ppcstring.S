@@ -1,15 +1,11 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * String handling functions for PowerPC.
  *
  * Copyright (C) 1996 Paul Mackerras.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
  */
 #include <ppc_asm.tmpl>
-#include <asm/errno.h>
+#include <linux/errno.h>
 
 	.globl	strcpy
 strcpy:
@@ -94,13 +90,6 @@ memset:
 8:	stbu	r4,1(r6)
 	bdnz	8b
 	blr
-
-	.globl	bcopy
-bcopy:
-	mr	r6,r3
-	mr	r3,r4
-	mr	r4,r6
-	b	memcpy
 
 	.globl	memmove
 memmove:

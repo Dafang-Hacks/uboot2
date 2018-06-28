@@ -1,27 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * Copyright (C) 2011 Renesas Solutions Corp.
  * Copyright (C) 2011 Nobuhiro Iwamatsu <nobuhiro.Iwamatsu.yj@renesas.com>
  *
  * board/renesas/ecovec/lowlevel_init.S
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
 #include <config.h>
-#include <version.h>
 #include <asm/processor.h>
 #include <asm/macro.h>
 #include <configs/ecovec.h>
@@ -33,7 +18,7 @@
 
 lowlevel_init:
 
-	/* jump to 0xA0020000 if bit 1 of PVDR_A */
+	/* jump to CONFIG_ECOVEC_ROMIMAGE_ADDR if bit 1 of PVDR_A */
 	mov.l	PVDR_A, r1
 	mov.l	PVDR_D, r2
 	mov.b	@r1, r0

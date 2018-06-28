@@ -23,11 +23,11 @@ methods could be handy.
    the board.And then execute the bootloader from DDR.
    Some usecases where this may be used:
       - While developing some new feature of u-boot, for example USB driver or
-        SPI driver.
-        Suppose the board already has a working bootloader on it. And you would
-        prefer to keep it intact, at the same time want to test your bootloader.
-        In this case you can get your test bootloader binary into DDR via tftp
-        for example. Then execute the test bootloader.
+	SPI driver.
+	Suppose the board already has a working bootloader on it. And you would
+	prefer to keep it intact, at the same time want to test your bootloader.
+	In this case you can get your test bootloader binary into DDR via tftp
+	for example. Then execute the test bootloader.
      - Suppose a platform already has a propreitery bootloader which does not
        support for example AMP boot. In this case also RAM boot loader can be
        utilized.
@@ -90,8 +90,8 @@ In the 2nd case bootloader has already re-located CCSRBAR to 0xffe00000
 
    This will finally use the CONFIG_SYS_RAMBOOT.
 
-3. File name-> arch/powerpc/include/asm/config_mpc85xx.h
-   In the section of the particular SOC, for example P1020,
+3. Change CONFIG_SYS_CCSRBAR_DEFAULT in menuconfig accordingly.
+   In the section of the particular SOC, for example P1020, pseudo code
 
    #if defined(CONFIG_GO)
    #define CONFIG_SYS_CCSRBAR_DEFAULT	0xffe00000
