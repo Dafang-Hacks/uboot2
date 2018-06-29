@@ -72,6 +72,9 @@ struct spi_flash {
 	u32 size;
 	u32 page_size;
 	u32 sector_size;
+    /* flash address size (byte) */
+    u32		addr_size;
+
 	u32 erase_size;
 #ifdef CONFIG_SPI_FLASH_BAR
 	u8 bank_read_cmd;
