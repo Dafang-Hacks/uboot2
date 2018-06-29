@@ -3,6 +3,7 @@
 #include <malloc.h>
 #include <net.h>
 #include <command.h>
+#include <asm/arch/gpio.h>
 #include <asm/io.h>
 #include <asm/cache.h>
 #include <asm/arch/clk.h>
