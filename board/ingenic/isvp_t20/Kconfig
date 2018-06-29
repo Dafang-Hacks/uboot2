@@ -23,7 +23,15 @@ config SYS_VENDOR
 	default "ingenic" if SOC_T20
 
 
+config SPL_BUILD
+	bool "SPL_BUILD"
+	help
+	  T20
 
+config ENV_IS_IN_SPI_FLASH
+	bool "ENV_IS_IN_SPI_FLASH"
+	help
+	  T20
 
 config SYS_CONFIG_NAME
 	default "isvp_t20"
