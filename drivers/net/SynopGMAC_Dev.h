@@ -38,9 +38,11 @@
 #define ENH_DESC
 #define ENH_DESC_8W
 
-#include <asm/io.h>
+
+
 #include <config.h>
 #include <common.h>
+#include <asm/io.h>
 
 static inline void plat_delay(u32 delay)
 {
