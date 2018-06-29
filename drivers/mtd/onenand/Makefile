@@ -7,5 +7,5 @@ ifndef	CONFIG_SPL_BUILD
 obj-$(CONFIG_CMD_ONENAND)	:= onenand_uboot.o onenand_base.o onenand_bbt.o
 obj-$(CONFIG_SAMSUNG_ONENAND)	+= samsung.o
 else
-obj-y				:= onenand_spl.o
+# obj-y				:= onenand_spl.o
 endif
