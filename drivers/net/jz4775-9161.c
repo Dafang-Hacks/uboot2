@@ -366,8 +366,8 @@ static int jz_recv(struct eth_device* dev)
 		/* Pass the packet up to the protocol layers */
 
 #if 0
-		jzmac_dump_arp_reply(NetRxPackets[next_rx], length - 4);
-		jzmac_dump_icmp_reply(NetRxPackets[next_rx], length - 4);
+		jzmac_dump_arp_reply(net_rx_packets[next_rx], length - 4);
+		jzmac_dump_icmp_reply(net_rx_packets[next_rx], length - 4);
 #endif
 
 		// printf("recv length:%d\n", length);
@@ -378,7 +378,7 @@ static int jz_recv(struct eth_device* dev)
 			return -1;
 		}
 #endif
-		NetReceive(NetRxPackets[next_rx], length - 4);
+		net_process_received_packet(net_rx_packets[next_rx], length - 4);
 		/* after got data, make sure the dma owns desc to recv data from MII */
 		desc->status = DescOwnByDma;
 
@@ -469,7 +469,7 @@ static int jz_init(struct eth_device* dev, bd_t * bd)
 
 		curr_desc->length |= ((PKTSIZE_ALIGN <<DescSize1Shift) & DescSize1Mask) |
 			((0 << DescSize2Shift) & DescSize2Mask);
-		curr_desc->buffer1 = virt_to_phys(NetRxPackets[i]);
+		curr_desc->buffer1 = virt_to_phys(net_rx_packets[i]);
 
 		curr_desc->extstatus = 0;
 		curr_desc->reserved1 = 0;
