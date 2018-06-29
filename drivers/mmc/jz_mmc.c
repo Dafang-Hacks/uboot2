@@ -31,6 +31,7 @@ struct jz_mmc_priv {
 	uintptr_t base;
 	uint32_t flags;
 	int clk;
+	struct mmc_config	cfg;
 };
 
 #define udelay(int) do{}while(0); //for decreasing time by ykliu
@@ -40,6 +41,13 @@ struct jz_mmc_priv {
 #define JZ_MMC_BUS_WIDTH_4    0x2
 #define JZ_MMC_BUS_WIDTH_8    0x3
 #define JZ_MMC_SENT_INIT (1 << 2)
+
+#define NO_CARD_ERR		-16 /* No SD/MMC card inserted */
+#define UNUSABLE_ERR		-17 /* Unusable Card */
+#define COMM_ERR		-18 /* Communications Error */
+#define TIMEOUT			-19
+#define IN_PROGRESS		-20 /* operation is in progress */
+
 
 #ifdef CONFIG_SPL_BUILD
 /* SPL will only use a single MMC device (CONFIG_JZ_MMC_SPLMSC) */
@@ -320,56 +328,60 @@ static int jz_mmc_core_init(struct mmc *mmc)
 
 	return 0;
 }
+static const struct mmc_ops jz_mmc_ops = {
+	.send_cmd	= jz_mmc_send_cmd,
+	.set_ios	= jz_mmc_set_ios,
+	.init		= jz_mmc_core_init,
+};
 
 static void jz_mmc_init_one(int idx, int controller, uintptr_t base, int clock)
 {
 	struct mmc *mmc = &mmc_dev[idx];
 	struct jz_mmc_priv *priv = &mmc_priv[idx];
 
+    struct mmc_config *cfg;
+    cfg = &priv->cfg;
 	/* fill in the name */
-	strcpy(mmc->name, "msc");
-	mmc->name[10] = '0' + controller;
-	mmc->name[11] = 0;
+	cfg->name = "msc";
+	//cfg->name[10] = '0' + controller;
+	//cfg->name[11] = 0;
+
+    cfg->ops = &jz_mmc_ops;
 
 	/* setup priv */
 	priv->base = base;
 	priv->clk = clock;
 	priv->flags = 0;
 
+
+
+
 	/* setup mmc */
 	mmc->priv = priv;
-	mmc->send_cmd = jz_mmc_send_cmd;
-	mmc->set_ios = jz_mmc_set_ios;
-#if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_SUPPORT_EMMC_BOOT)
-	mmc->init = jz_mmc_core_init;
-#else
-	mmc->init = NULL;
-#endif
-	mmc->getcd = NULL;
-	mmc->getwp = NULL;
 
-	mmc->voltages = MMC_VDD_27_28 |
+
+	cfg->voltages = MMC_VDD_27_28 |
 		MMC_VDD_28_29 | MMC_VDD_29_30 | MMC_VDD_30_31 | MMC_VDD_31_32 |
 		MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_34_35 | MMC_VDD_35_36;
 
-	mmc->f_min = 200000;
+	cfg->f_min = 200000;
 #ifdef CONFIG_SPL_BUILD
-	mmc->f_max = 24000000;
+	cfg->f_max = 24000000;
 #ifdef CONFIG_JZ_MMC_MSC0_PA_8BIT
-	mmc->host_caps = MMC_MODE_8BIT | MMC_MODE_HC;
+	mmc->host_caps = MMC_MODE_8BIT ;
 #else
-	mmc->host_caps = MMC_MODE_4BIT | MMC_MODE_HC;
+	mmc->host_caps = MMC_MODE_4BIT ;
 #endif
 #else
-	mmc->f_max = 52000000;
+	cfg->f_max = 52000000;
 #ifndef CONFIG_FPGA
 #ifdef CONFIG_JZ_MMC_MSC0_PA_8BIT
-	mmc->host_caps = MMC_MODE_8BIT | MMC_MODE_HS_52MHz | MMC_MODE_HS | MMC_MODE_HC;
+	mmc->host_caps = MMC_MODE_8BIT | MMC_MODE_HS_52MHz | MMC_MODE_HS ;
 #else
-	mmc->host_caps = MMC_MODE_4BIT | MMC_MODE_HS_52MHz | MMC_MODE_HS | MMC_MODE_HC;
+	mmc->host_caps = MMC_MODE_4BIT | MMC_MODE_HS_52MHz | MMC_MODE_HS ;
 #endif
 #else /* CONFIG_FPGA */
-	mmc->host_caps = MMC_MODE_HS_52MHz | MMC_MODE_HS | MMC_MODE_HC;
+	mmc->host_caps = MMC_MODE_HS_52MHz | MMC_MODE_HS ;
 #endif /* CONFIG_FPGA */
 #endif
 
