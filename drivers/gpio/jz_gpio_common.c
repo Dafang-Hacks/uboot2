@@ -20,11 +20,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
+#include <asm/arch/base.h>
 
 #include <common.h>
 #include <config.h>
 #include <asm/io.h>
-#include <asm/gpio.h>
+#include <asm/arch/gpio.h>
 
 #include <ingenic_soft_i2c.h>
 #include <jz_pca953x.h>
