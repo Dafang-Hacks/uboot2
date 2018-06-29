@@ -118,6 +118,7 @@ serial_initfunc(ns16550_serial_initialize);
 serial_initfunc(pl01x_serial_initialize);
 serial_initfunc(pxa_serial_initialize);
 serial_initfunc(sh_serial_initialize);
+serial_initfunc(jz_serial_initialize);
 
 /**
  * serial_register() - Register serial driver with serial driver core
@@ -173,6 +174,7 @@ void serial_initialize(void)
 	pl01x_serial_initialize();
 	pxa_serial_initialize();
 	sh_serial_initialize();
+	jz_serial_initialize();
 
 	serial_assign(default_serial_console()->name);
 }
